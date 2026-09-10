@@ -128,6 +128,39 @@
       z-index: 50;
       white-space: nowrap;
     }
+
+    #build-confirm-ui {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 15px;
+      z-index: 100;
+    }
+
+    #build-confirm-ui button {
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: white;
+    }
+
+    #build-confirm-btn {
+      background-color: #48bb78; /* Green */
+    }
+
+    #build-confirm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #build-cancel-btn {
+      background-color: #f56565; /* Red */
+    }
   </style>
 </head>
 <body>
@@ -141,6 +174,12 @@
   </div>
 
   <div id="canvas-tooltip"></div>
+
+  <div id="build-confirm-ui">
+    <button id="build-cancel-btn" onclick="structureManager.cancelAction()">Cancel</button>
+    <button id="build-confirm-btn" onclick="structureManager.placeBuilding()">Confirm</button>
+  </div>
+
   <canvas id="myCanvas"></canvas>
 
   <div id="hex-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(26, 32, 44, 0.98); color: white; padding: 20px; border-radius: 8px; font-family: sans-serif; width: 350px; border: 1px solid #4a5568; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
