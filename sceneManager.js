@@ -15,10 +15,6 @@ class SceneManager {
       if (npcMenu) {
         npcMenu.style.display = 'none';
       }
-      const missionMenu = document.getElementById('mission-menu');
-      if (missionMenu) {
-        missionMenu.style.display = 'none';
-      }
     } else {
       this.currentScene = 'BASE';
       // Show base building UI
@@ -31,10 +27,10 @@ class SceneManager {
         npcMenu.style.display = 'block';
       }
 
-      // Also close the deploy menu stub if it's open
-      const deployMenu = document.getElementById('deploy-menu-stub');
-      if (deployMenu) {
-        deployMenu.style.display = 'none';
+      // Also close the hex panel if it's open
+      const hexPanel = document.getElementById('hex-panel');
+      if (hexPanel) {
+        hexPanel.style.display = 'none';
       }
     }
 

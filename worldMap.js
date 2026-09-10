@@ -26,13 +26,14 @@ class WorldMap {
           r: r,
           x: x,
           y: y,
-          color: this.colors[Math.floor(Math.random() * this.colors.length)]
+          color: this.colors[Math.floor(Math.random() * this.colors.length)],
+          state: 'EMPTY'
         });
       }
     }
   }
 
-  drawHex(ctx, x, y, radius, color, isActive) {
+  drawHex(ctx, x, y, radius, color, hexState) {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 180) * (60 * i - 30);
@@ -49,11 +50,20 @@ class WorldMap {
     ctx.fillStyle = color;
     ctx.fill();
 
-    if (isActive) {
+    if (hexState === 'ACTIVE') {
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#e53e3e';
-      // Optional: add a slight red overlay
       ctx.fillStyle = 'rgba(229, 62, 62, 0.3)';
+      ctx.fill();
+    } else if (hexState === 'RECALLING') {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ecc94b';
+      ctx.fillStyle = 'rgba(236, 201, 75, 0.3)';
+      ctx.fill();
+    } else if (hexState === 'HELD') {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#48bb78';
+      ctx.fillStyle = 'rgba(72, 187, 120, 0.3)';
       ctx.fill();
     } else {
       ctx.lineWidth = 1;
@@ -64,17 +74,8 @@ class WorldMap {
   }
 
   draw(ctx) {
-    // Collect active deployment hexes to make lookup faster
-    const activeHexes = new Set();
-    if (window.missionManager && window.missionManager.activeDeployments) {
-      window.missionManager.activeDeployments.forEach(d => {
-        if (d.hex) activeHexes.add(d.hex);
-      });
-    }
-
     for (const hex of this.hexes) {
-      const isActive = activeHexes.has(hex);
-      this.drawHex(ctx, hex.x, hex.y, this.hexRadius, hex.color, isActive);
+      this.drawHex(ctx, hex.x, hex.y, this.hexRadius, hex.color, hex.state);
     }
   }
 
@@ -110,23 +111,31 @@ class WorldMap {
   openDeployMenu(hex) {
     this.selectedHex = hex;
 
-    // Generate a mission for this hex if it doesn't have one
-    if (!hex.mission) {
-      // Temporarily use missionManager to generate 1 mission
-      window.missionManager.generateMissions(1);
-      hex.mission = window.missionManager.missions.pop();
-    }
+    const hexPanel = document.getElementById('hex-panel');
+    if (!hexPanel) return;
 
-    const deployMenu = document.getElementById('deploy-menu-stub');
-    if (deployMenu) {
-      deployMenu.style.display = 'block';
+    hexPanel.style.display = 'block';
+    document.getElementById('hex-coords').innerText = `Hex Location: (${hex.q}, ${hex.r})`;
 
-      const coordsInfo = document.getElementById('deploy-coords');
-      if (coordsInfo) {
-        coordsInfo.innerText = `Hex Location: (${hex.q}, ${hex.r})`;
+    // Hide all content sections first
+    document.getElementById('hex-content-empty').style.display = 'none';
+    document.getElementById('hex-content-held').style.display = 'none';
+    document.getElementById('hex-content-active').style.display = 'none';
+
+    // Calculate Gunship Capacity
+    const gunshipCount = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP').length;
+    const activeDeploymentsCount = window.missionManager.activeDeployments.length;
+    const hasAvailableGunship = gunshipCount > activeDeploymentsCount;
+
+    if (hex.state === 'EMPTY') {
+      document.getElementById('hex-content-empty').style.display = 'block';
+
+      // Generate a mission for this hex if it doesn't have one
+      if (!hex.mission) {
+        window.missionManager.generateMissions(1);
+        hex.mission = window.missionManager.missions.pop();
       }
 
-      // Update UI with mission details
       const m = hex.mission;
       document.getElementById('deploy-mission-name').innerText = m.name;
       document.getElementById('deploy-mission-diff').innerText = '★'.repeat(m.difficulty) + '☆'.repeat(5 - m.difficulty);
@@ -134,7 +143,6 @@ class WorldMap {
       document.getElementById('deploy-mission-time').innerText = `${durationMins} min${durationMins > 1 ? 's' : ''}`;
       document.getElementById('deploy-mission-reqs').innerText = `${m.minSoldiers} Soldiers, ${m.minMedics} Medics`;
 
-      // Update available troops and input maxes
       const availS = window.npcManager.counts.soldier;
       const availM = window.npcManager.counts.medic;
 
@@ -147,14 +155,59 @@ class WorldMap {
       mInput.max = availM;
       sInput.value = 0;
       mInput.value = 0;
+
+      const btn = document.getElementById('send-gunship-btn');
+      const warning = document.getElementById('no-gunships-warning-empty');
+      if (hasAvailableGunship) {
+        btn.disabled = false;
+        btn.style.opacity = 1;
+        btn.style.cursor = 'pointer';
+        warning.style.display = 'none';
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = 0.5;
+        btn.style.cursor = 'not-allowed';
+        warning.style.display = 'block';
+      }
+    } else if (hex.state === 'HELD') {
+      document.getElementById('hex-content-held').style.display = 'block';
+      document.getElementById('held-s-count').innerText = hex.garrison ? hex.garrison.soldiers : 0;
+      document.getElementById('held-m-count').innerText = hex.garrison ? hex.garrison.medics : 0;
+
+      const btn = document.getElementById('recall-troops-btn');
+      const warning = document.getElementById('no-gunships-warning-held');
+      if (hasAvailableGunship) {
+        btn.disabled = false;
+        btn.style.opacity = 1;
+        btn.style.cursor = 'pointer';
+        warning.style.display = 'none';
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = 0.5;
+        btn.style.cursor = 'not-allowed';
+        warning.style.display = 'block';
+      }
+    } else if (hex.state === 'ACTIVE' || hex.state === 'RECALLING') {
+      document.getElementById('hex-content-active').style.display = 'block';
+      document.getElementById('active-state-title').innerText = hex.state === 'ACTIVE' ? 'Deployment Active' : 'Recalling Troops';
+      document.getElementById('active-state-title').style.color = hex.state === 'ACTIVE' ? '#fc8181' : '#ecc94b';
+
+      // The actual timer update logic could go in a requestAnimationFrame loop, but for now we just show the initial remaining time.
+      const deployment = window.missionManager.activeDeployments.find(d => d.hex === hex);
+      if (deployment) {
+        const remainingSecs = Math.ceil(deployment.timer / 60);
+        const remMins = Math.floor(remainingSecs / 60);
+        const remSecs = remainingSecs % 60;
+        document.getElementById('hex-timer-display').innerText = `${remMins.toString().padStart(2, '0')}:${remSecs.toString().padStart(2, '0')}`;
+      }
     }
   }
 
   closeDeployMenu() {
     this.selectedHex = null;
-    const deployMenu = document.getElementById('deploy-menu-stub');
-    if (deployMenu) {
-      deployMenu.style.display = 'none';
+    const hexPanel = document.getElementById('hex-panel');
+    if (hexPanel) {
+      hexPanel.style.display = 'none';
     }
   }
 
@@ -178,8 +231,12 @@ class WorldMap {
     window.missionManager.removeTroops('SOLDIER', sCount);
     window.missionManager.removeTroops('MEDIC', mCount);
 
+    // Update hex state
+    this.selectedHex.state = 'ACTIVE';
+
     // Add to active deployments
     window.missionManager.activeDeployments.push({
+      type: 'deploy',
       mission: mission,
       timer: mission.duration,
       duration: mission.duration,
@@ -189,6 +246,28 @@ class WorldMap {
     });
 
     console.log(`Gunship deployed to [${this.selectedHex.q}, ${this.selectedHex.r}]`);
+    this.closeDeployMenu();
+  }
+
+  recallTroops() {
+    if (!this.selectedHex || this.selectedHex.state !== 'HELD') return;
+
+    // Update hex state
+    this.selectedHex.state = 'RECALLING';
+
+    // Original duration is attached to the mission if we kept it,
+    // but in case we didn't store mission on HELD hex properly,
+    // we can use a fixed base duration or the mission's duration.
+    const recallDuration = this.selectedHex.mission ? Math.floor(this.selectedHex.mission.duration * 0.5) : 3600;
+
+    window.missionManager.activeDeployments.push({
+      type: 'recall',
+      timer: recallDuration,
+      duration: recallDuration,
+      hex: this.selectedHex
+    });
+
+    console.log(`Recalling troops from [${this.selectedHex.q}, ${this.selectedHex.r}]`);
     this.closeDeployMenu();
   }
 }
