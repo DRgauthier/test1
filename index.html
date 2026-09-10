@@ -135,12 +135,23 @@
   <div id="top-bar">
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
+      <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
       <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
     </div>
   </div>
 
   <div id="canvas-tooltip"></div>
   <canvas id="myCanvas"></canvas>
+
+  <div id="deploy-menu-stub" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(26, 32, 44, 0.95); color: white; padding: 20px; border-radius: 8px; border: 1px solid #4a5568; z-index: 100; text-align: center; width: 300px;">
+    <h3 style="margin-top: 0;">Deploy Troops</h3>
+    <p id="deploy-coords" style="color: #a0aec0; font-size: 14px; margin-bottom: 20px;"></p>
+    <p style="font-size: 14px; margin-bottom: 20px;">Deployment logic scaffolding.<br>Real logic will be added in Phase 2.</p>
+    <div style="display: flex; gap: 10px; justify-content: center;">
+      <button style="background: #48bb78; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Simulate Deploy</button>
+      <button onclick="window.worldMap.closeDeployMenu()" style="background: #e53e3e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Cancel</button>
+    </div>
+  </div>
 
   <div id="build-menu-container">
     <div id="build-menu-header" onclick="toggleBuildMenu()">
@@ -165,12 +176,18 @@
     </div>
   </div>
 
+  <script src="sceneManager.js"></script>
+  <script src="worldMap.js"></script>
   <script src="structures.js"></script>
   <script src="npc.js"></script>
   <script src="missions.js"></script>
   <script src="camera.js"></script>
   
   <script>
+    // Initialize managers that don't depend on DOM elements directly
+    window.sceneManager = new SceneManager();
+    window.worldMap = new WorldMap();
+
     const canvas = document.getElementById('myCanvas');
     initCamera(canvas);
 
