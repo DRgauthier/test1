@@ -143,14 +143,37 @@
   <div id="canvas-tooltip"></div>
   <canvas id="myCanvas"></canvas>
 
-  <div id="deploy-menu-stub" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(26, 32, 44, 0.95); color: white; padding: 20px; border-radius: 8px; border: 1px solid #4a5568; z-index: 100; text-align: center; width: 300px;">
-    <h3 style="margin-top: 0;">Deploy Troops</h3>
-    <p id="deploy-coords" style="color: #a0aec0; font-size: 14px; margin-bottom: 20px;"></p>
-    <p style="font-size: 14px; margin-bottom: 20px;">Deployment logic scaffolding.<br>Real logic will be added in Phase 2.</p>
-    <div style="display: flex; gap: 10px; justify-content: center;">
-      <button onclick="window.worldMap.simulateDeploy()" style="background: #48bb78; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Simulate Deploy</button>
-      <button onclick="window.worldMap.closeDeployMenu()" style="background: #e53e3e; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Cancel</button>
+  <div id="deploy-menu-stub" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(26, 32, 44, 0.98); color: white; padding: 20px; border-radius: 8px; font-family: sans-serif; width: 350px; border: 1px solid #4a5568; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #4a5568; padding-bottom: 10px; margin-bottom: 10px;">
+      <h3 style="margin: 0;">Deploy Gunship</h3>
+      <button onclick="window.worldMap.closeDeployMenu()" style="background: #e53e3e; border: none; color: white; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-weight: bold;">X</button>
     </div>
+    <p id="deploy-coords" style="color: #a0aec0; font-size: 13px; margin: 0 0 10px 0; text-align: center;"></p>
+
+    <div style="background: #2d3748; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #4a5568;">
+      <h4 id="deploy-mission-name" style="margin: 0 0 5px 0; color: #fbd38d;">Mission Name</h4>
+      <div style="font-size: 13px; margin-bottom: 8px; line-height: 1.4;">
+        Difficulty: <span id="deploy-mission-diff" style="color: #ecc94b"></span><br>
+        Duration: <b id="deploy-mission-time"></b> | Required: <span id="deploy-mission-reqs" style="color: #fc8181; font-weight: bold;"></span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 15px; color: #63b3ed; font-size: 13px; text-align: center;">
+      Available: <b id="deploy-avail-s">0</b> Soldiers | <b id="deploy-avail-m">0</b> Medics
+    </div>
+
+    <div style="display: flex; justify-content: space-between; gap: 10px; align-items: center; background: #1a202c; padding: 10px; border-radius: 6px; border: 1px solid #4a5568;">
+      <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+        Assign Soldiers:
+        <input type="number" id="world-deploy-s" min="0" value="0" style="width: 60px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
+      </label>
+      <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+        Assign Medics:
+        <input type="number" id="world-deploy-m" min="0" value="0" style="width: 60px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
+      </label>
+    </div>
+
+    <button onclick="window.worldMap.deployGunship()" style="width: 100%; background: #48bb78; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 15px;">Send Gunship</button>
   </div>
 
   <div id="build-menu-container">
