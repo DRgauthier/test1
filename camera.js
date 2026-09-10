@@ -38,6 +38,8 @@ function initCamera(canvas) {
 
   let touchStartX = 0;
   let touchStartY = 0;
+  let lastTouchX = 0;
+  let lastTouchY = 0;
   let touchStartTime = 0;
 
   function getCurrentCamera() {
@@ -187,8 +189,8 @@ function initCamera(canvas) {
       isDragging = true;
       hasDragged = false;
       const touch = e.touches[0];
-      lastMouseX = touch.clientX;
-      lastMouseY = touch.clientY;
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       touchStartTime = Date.now();
@@ -213,14 +215,14 @@ function initCamera(canvas) {
     if (e.touches.length === 1 && isDragging) {
       hasDragged = true;
       const touch = e.touches[0];
-      const dx = touch.clientX - lastMouseX;
-      const dy = touch.clientY - lastMouseY;
+      const dx = touch.clientX - lastTouchX;
+      const dy = touch.clientY - lastTouchY;
 
       cam.x -= dx / cam.zoom;
       cam.y -= dy / cam.zoom;
 
-      lastMouseX = touch.clientX;
-      lastMouseY = touch.clientY;
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
 
       // Update hover for tooltip like mouse move
       if (sceneManager.currentScene === 'BASE') {
@@ -262,13 +264,13 @@ function initCamera(canvas) {
       isDragging = false;
 
       const timeElapsed = Date.now() - touchStartTime;
-      const dx = lastMouseX - touchStartX;
-      const dy = lastMouseY - touchStartY;
+      const dx = lastTouchX - touchStartX;
+      const dy = lastTouchY - touchStartY;
       const distance = Math.hypot(dx, dy);
 
       // Tap detection threshold: <= 300ms and <= 15px movement
       if (timeElapsed <= 300 && distance <= 15) {
-        handleInteraction(lastMouseX, lastMouseY);
+        handleInteraction(lastTouchX, lastTouchY);
       }
     }
 
