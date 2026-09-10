@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas RTS</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: sans-serif;
+    }
+    
+    canvas {
+      display: block;
+    }
+
+    #top-bar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column; 
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #4a5568;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    .top-bar-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      gap: 20px;
+    }
+
+    #dev-btn {
+      background: #2d3748;
+      color: white;
+      border: 1px solid #718096;
+      padding: 5px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #build-menu-container {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 10;
+      background: rgba(26, 32, 44, 0.9);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #4a5568;
+      width: 250px;
+      box-sizing: border-box;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    #build-menu-header {
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #build-menu-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    #build-menu-content button {
+      background: #2d3748;
+      color: white;
+      border: 1px solid #718096;
+      padding: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      transition: background 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+
+    #build-menu-content button:hover {
+      background: #4a5568;
+    }
+
+    #build-menu-content button.danger {
+      background: #9b2c2c;
+      border-color: #f56565;
+      text-align: center;
+      margin-top: 5px;
+    }
+    
+    #build-menu-content button.danger:hover {
+      background: #c53030;
+    }
+
+    #build-menu-content button.cancel {
+      text-align: center;
+    }
+
+    #canvas-tooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #4a5568;
+      font-size: 14px;
+      font-weight: bold;
+      pointer-events: none; 
+      display: none;
+      z-index: 50;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="top-bar">
+    <div class="top-bar-row">
+      <span id="resource-display">Loading resources...</span>
+      <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
+    </div>
+  </div>
+
+  <div id="canvas-tooltip"></div>
+  <canvas id="myCanvas"></canvas>
+
+  <div id="build-menu-container">
+    <div id="build-menu-header" onclick="toggleBuildMenu()">
+      <span>Build Structures</span> <span id="build-toggle">▼</span>
+    </div>
+    <div id="build-menu-content">
+      <button onclick="structureManager.startBuilding('HEADQUARTERS')">HQ (St:200 Wd:200)</button>
+      <button onclick="structureManager.startBuilding('BARRACKS')">Barracks (St:100 Wd:50)</button>
+      <button onclick="structureManager.startBuilding('GUNSHIP')">Gunship Pad (St:300 Wd:100)</button>
+      <button onclick="structureManager.startBuilding('SUPPLY_DEPOT')">Supply Depot (St:50 Wd:50)</button>
+      <button onclick="structureManager.startBuilding('TURRET')">Defense Turret (St:100)</button>
+      <button onclick="structureManager.startBuilding('WORKER_HUT')">Worker Hut (St:20 Wd:50)</button>
+      <button onclick="structureManager.startBuilding('MEDIC_STATION')">Medic Station (St:50 Wd:50 Wt:50)</button>
+      <hr style="border-color: #4a5568; width: 100%;" />
+      <button onclick="structureManager.startBuilding('STEEL_MINE')">Steel Mine (Wd:50 Fd:20)</button>
+      <button onclick="structureManager.startBuilding('LUMBER_MILL')">Lumber Mill (St:20 Fd:20)</button>
+      <button onclick="structureManager.startBuilding('FARM')">Farm (St:10 Wd:40 Wt:20)</button>
+      <button onclick="structureManager.startBuilding('WATER_PUMP')">Water Pump (St:40 Wd:10)</button>
+      <hr style="border-color: #4a5568; width: 100%;" />
+      <button class="danger" onclick="structureManager.startDeconstructing()">Deconstruct (75% Refund)</button>
+      <button class="cancel" onclick="structureManager.cancelAction()">Cancel Action</button>
+    </div>
+  </div>
+
+  <script src="structures.js"></script>
+  <script src="npc.js"></script>
+  <script src="missions.js"></script>
+  <script src="camera.js"></script>
+  
+  <script>
+    const canvas = document.getElementById('myCanvas');
+    initCamera(canvas);
+
+    window.npcManager = new NPCManager(structureManager);
+    window.missionManager = new MissionManager(structureManager, window.npcManager);
+
+    // Give the player 3 free starting workers to make the starter base self-sufficient
+    const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
+    if (hq) {
+      for(let i = 0; i < 3; i++) {
+        const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
+        const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
+        const newWorker = new Worker(spawnX, spawnY);
+        window.npcManager.npcs.push(newWorker);
+        window.npcManager.counts.worker++;
+      }
+      window.npcManager.updateUI();
+    }
+
+    function toggleDevMode() {
+      const isDev = structureManager.toggleDevMode();
+      const btn = document.getElementById('dev-btn');
+      btn.innerText = `Dev Mode: ${isDev ? 'ON' : 'OFF'}`;
+      btn.style.backgroundColor = isDev ? '#48bb78' : '#2d3748';
+    }
+
+    function toggleBuildMenu() {
+      const content = document.getElementById('build-menu-content');
+      const toggleIcon = document.getElementById('build-toggle');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'flex';
+        toggleIcon.innerText = '▼';
+      } else {
+        content.style.display = 'none';
+        toggleIcon.innerText = '▲';
+      }
+    }
+  </script>
+</body>
+</html>
