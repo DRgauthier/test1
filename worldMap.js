@@ -87,6 +87,7 @@ class WorldMap {
   }
 
   openDeployMenu(hex) {
+    this.selectedHex = hex;
     const deployMenu = document.getElementById('deploy-menu-stub');
     if (deployMenu) {
       deployMenu.style.display = 'block';
@@ -98,9 +99,17 @@ class WorldMap {
   }
 
   closeDeployMenu() {
+    this.selectedHex = null;
     const deployMenu = document.getElementById('deploy-menu-stub');
     if (deployMenu) {
       deployMenu.style.display = 'none';
+    }
+  }
+
+  simulateDeploy() {
+    if (this.selectedHex) {
+      console.log(`Gunship deployed to [${this.selectedHex.q}, ${this.selectedHex.r}]`);
+      this.closeDeployMenu();
     }
   }
 }

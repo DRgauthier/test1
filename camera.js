@@ -194,8 +194,11 @@ function initCamera(canvas) {
   }, { passive: false });
 
   function render() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
     ctx.save();
 
