@@ -31,6 +31,15 @@ function initCamera(canvas) {
   let lastMouseX = 0;
   let lastMouseY = 0;
 
+  let initialPinchDist = 0;
+  let initialPinchZoom = 1;
+  let pinchCenterX = 0;
+  let pinchCenterY = 0;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
   function getCurrentCamera() {
     return cameras[sceneManager.currentScene];
   }
@@ -118,6 +127,10 @@ function initCamera(canvas) {
     
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
+
+    if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+      window.worldMap.closeDeployMenu();
+    }
   });
 
   window.addEventListener('mouseup', (e) => {
@@ -134,34 +147,136 @@ function initCamera(canvas) {
     }
 
     if (!hasDragged) {
-      const cam = getCurrentCamera();
-      const rect = canvas.getBoundingClientRect();
-      const worldX = ((e.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
-      const worldY = ((e.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
-
-      if (sceneManager.currentScene === 'BASE') {
-        if (structureManager.isBuilding) {
-          structureManager.placeBuilding();
-        } else if (structureManager.isDeconstructing) {
-          structureManager.deconstructBuilding();
-        } else {
-          // --- Click Interaction Logic ---
-          for (let i = structureManager.buildings.length - 1; i >= 0; i--) {
-            const b = structureManager.buildings[i];
-            if (worldX >= b.x && worldX <= b.x + b.type.width && worldY >= b.y && worldY <= b.y + b.type.height) {
-              // Check if the user clicked the Gunship to open the menu
-              if (b.type.id === 'GUNSHIP' && window.missionManager) {
-                window.missionManager.openMenu();
-              }
-              break;
-            }
-          }
-        }
-      } else {
-        worldMap.handleClick(worldX, worldY);
-      }
+      handleInteraction(e.clientX, e.clientY);
     }
   });
+
+  function handleInteraction(clientX, clientY) {
+    const cam = getCurrentCamera();
+    const rect = canvas.getBoundingClientRect();
+    const worldX = ((clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
+    const worldY = ((clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
+
+    if (sceneManager.currentScene === 'BASE') {
+      if (structureManager.isBuilding) {
+        structureManager.placeBuilding();
+      } else if (structureManager.isDeconstructing) {
+        structureManager.deconstructBuilding();
+      } else {
+        // --- Click Interaction Logic ---
+        for (let i = structureManager.buildings.length - 1; i >= 0; i--) {
+          const b = structureManager.buildings[i];
+          if (worldX >= b.x && worldX <= b.x + b.type.width && worldY >= b.y && worldY <= b.y + b.type.height) {
+            // Check if the user clicked the Gunship to open the menu
+            if (b.type.id === 'GUNSHIP' && window.missionManager) {
+              window.missionManager.openMenu();
+            }
+            break;
+          }
+        }
+      }
+    } else {
+      worldMap.handleClick(worldX, worldY);
+    }
+  }
+
+  // --- Touch Support ---
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      isDragging = true;
+      hasDragged = false;
+      const touch = e.touches[0];
+      lastMouseX = touch.clientX;
+      lastMouseY = touch.clientY;
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTime = Date.now();
+    } else if (e.touches.length === 2) {
+      isDragging = false;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      initialPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const cam = getCurrentCamera();
+      initialPinchZoom = cam.zoom;
+
+      const rect = canvas.getBoundingClientRect();
+      pinchCenterX = ((t1.clientX + t2.clientX) / 2) - rect.left;
+      pinchCenterY = ((t1.clientY + t2.clientY) / 2) - rect.top;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const cam = getCurrentCamera();
+
+    if (e.touches.length === 1 && isDragging) {
+      hasDragged = true;
+      const touch = e.touches[0];
+      const dx = touch.clientX - lastMouseX;
+      const dy = touch.clientY - lastMouseY;
+
+      cam.x -= dx / cam.zoom;
+      cam.y -= dy / cam.zoom;
+
+      lastMouseX = touch.clientX;
+      lastMouseY = touch.clientY;
+
+      // Update hover for tooltip like mouse move
+      if (sceneManager.currentScene === 'BASE') {
+        structureManager.updateMousePosition(
+          touch.clientX, touch.clientY,
+          cam.x, cam.y, cam.zoom,
+          window.innerWidth, window.innerHeight
+        );
+      } else if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+        window.worldMap.closeDeployMenu();
+      }
+    } else if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const newDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+      // Calculate zoom around the pinch center
+      const worldX = (pinchCenterX - window.innerWidth / 2) / cam.zoom + cam.x;
+      const worldY = (pinchCenterY - window.innerHeight / 2) / cam.zoom + cam.y;
+
+      let newZoom = initialPinchZoom * (newDist / initialPinchDist);
+      newZoom = Math.max(0.05, Math.min(newZoom, 10));
+      cam.zoom = newZoom;
+
+      cam.x = worldX - (pinchCenterX - window.innerWidth / 2) / cam.zoom;
+      cam.y = worldY - (pinchCenterY - window.innerHeight / 2) / cam.zoom;
+
+      if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+        window.worldMap.closeDeployMenu();
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+
+    // If we were dragging with 1 finger and just lifted it
+    if (e.touches.length === 0 && isDragging) {
+      isDragging = false;
+
+      const timeElapsed = Date.now() - touchStartTime;
+      const dx = lastMouseX - touchStartX;
+      const dy = lastMouseY - touchStartY;
+      const distance = Math.hypot(dx, dy);
+
+      // Tap detection threshold: <= 300ms and <= 15px movement
+      if (timeElapsed <= 300 && distance <= 15) {
+        handleInteraction(lastMouseX, lastMouseY);
+      }
+    }
+
+    // If lifting a finger from a pinch, stop tracking
+    if (e.touches.length < 2) {
+      isDragging = false;
+    }
+  }, { passive: false });
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -194,8 +309,11 @@ function initCamera(canvas) {
   }, { passive: false });
 
   function render() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
     ctx.save();
 
