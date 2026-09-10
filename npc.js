@@ -485,6 +485,26 @@ class NPCManager {
           if (newNPC) {
             this.npcs.push(newNPC);
             this.counts[task.typeKey]++;
+
+            if (window.supabaseClient && window.currentUser) {
+              window.supabaseClient
+                .from('workers')
+                .insert({
+                  player_id: window.currentUser.id,
+                  type_id: task.typeKey.toUpperCase(),
+                  x: spawnX,
+                  y: spawnY,
+                  health: newNPC.health
+                })
+                .select()
+                .single()
+                .then(({ data, error }) => {
+                  if (data) {
+                    newNPC.dbId = data.id;
+                    newNPC.training_started_at = data.training_started_at;
+                  }
+                });
+            }
           }
           
           this.trainingQueue.splice(i, 1);
@@ -500,6 +520,15 @@ class NPCManager {
 
         if (npc.health <= 0) {
           this.counts[npc.type.id.toLowerCase()]--;
+
+          if (window.supabaseClient && npc.dbId) {
+            window.supabaseClient
+              .from('workers')
+              .delete()
+              .eq('id', npc.dbId)
+              .then(() => {});
+          }
+
           this.npcs.splice(i, 1);
           uiNeedsUpdate = true; 
         }

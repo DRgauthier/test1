@@ -270,15 +270,30 @@
   <script src="missions.js"></script>
   <!-- Authentication UI -->
   <div id="auth-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;">
-    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center;">
-      <h2 style="margin-top: 0;">Login / Signup</h2>
-      <input type="email" id="auth-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
-      <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 20px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button id="auth-login-btn" style="padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Login</button>
-        <button id="auth-signup-btn" style="padding: 10px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Signup</button>
+    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center; position: relative;">
+
+      <!-- Main Menu -->
+      <div id="auth-main-menu">
+        <h2 style="margin-top: 0;">Welcome</h2>
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+          <button id="nav-login-btn" style="padding: 12px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Log in</button>
+          <button id="nav-signup-btn" style="padding: 12px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Sign up</button>
+          <button id="nav-settings-btn" style="padding: 12px 20px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Settings</button>
+        </div>
       </div>
-      <div id="auth-error" style="color: #fc8181; margin-top: 15px; font-size: 14px;"></div>
+
+      <!-- Auth Form (Hidden by default) -->
+      <div id="auth-form-menu" style="display: none;">
+        <button id="auth-back-btn" style="position: absolute; top: 15px; left: 15px; background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 14px;">&#8592; Back</button>
+        <h2 id="auth-title" style="margin-top: 0;"></h2>
+        <input type="email" id="auth-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+        <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 20px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+
+        <button id="auth-submit-btn" style="padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;"></button>
+
+        <div id="auth-error" style="color: #fc8181; margin-top: 15px; font-size: 14px;"></div>
+      </div>
+
     </div>
   </div>
 
@@ -309,7 +324,6 @@
         }
       }
 
-      // Initialize managers that don't depend on DOM elements directly
       window.sceneManager = new SceneManager();
       window.worldMap = new WorldMap(20, 20, seed);
 
@@ -319,16 +333,127 @@
       window.npcManager = new NPCManager(structureManager);
       window.missionManager = new MissionManager(structureManager, window.npcManager);
 
-      // Give the player 3 free starting workers to make the starter base self-sufficient
-      const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
-      if (hq) {
-        for(let i = 0; i < 3; i++) {
-          const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
-          const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
-          const newWorker = new Worker(spawnX, spawnY);
-          window.npcManager.npcs.push(newWorker);
-          window.npcManager.counts.worker++;
+      if (window.supabaseClient && window.currentUser) {
+        window.worldMap.fetchOtherPlayers();
+        // Ensure player record exists
+        let { data: player, error: playerError } = await window.supabaseClient
+          .from('players')
+          .select('*')
+          .eq('id', window.currentUser.id)
+          .single();
+
+        if (!player) {
+          // New player: create record with random overworld coords
+          const newPlayer = {
+            id: window.currentUser.id,
+            email: window.currentUser.email,
+            hex_x: Math.floor(Math.random() * 20),
+            hex_y: Math.floor(Math.random() * 20)
+          };
+          const { data: insertedPlayer, error: insertError } = await window.supabaseClient
+            .from('players')
+            .insert(newPlayer)
+            .select()
+            .single();
+          player = insertedPlayer || newPlayer;
         }
+
+        window.currentUser.hex_x = player.hex_x;
+        window.currentUser.hex_y = player.hex_y;
+
+        // Fetch buildings
+        const { data: buildingsData } = await window.supabaseClient
+          .from('buildings')
+          .select('*')
+          .eq('player_id', window.currentUser.id);
+
+        // Fetch workers
+        const { data: workersData } = await window.supabaseClient
+          .from('workers')
+          .select('*')
+          .eq('player_id', window.currentUser.id);
+
+        if ((!buildingsData || buildingsData.length === 0) && (!workersData || workersData.length === 0)) {
+          // Initial base setup
+          const hq = new Structure('HEADQUARTERS', -75, -75);
+          const { data: hqData } = await window.supabaseClient
+            .from('buildings')
+            .insert({
+              player_id: window.currentUser.id,
+              type_id: hq.type.id,
+              x: hq.x,
+              y: hq.y,
+              health: hq.health
+            })
+            .select()
+            .single();
+
+          if (hqData) {
+            hq.dbId = hqData.id;
+            hq.construction_started_at = hqData.construction_started_at;
+          }
+          structureManager.buildings = [hq];
+
+          const spawnPoints = [];
+          for(let i = 0; i < 3; i++) {
+            const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
+            const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
+            spawnPoints.push({ x: spawnX, y: spawnY });
+          }
+
+          for (const sp of spawnPoints) {
+            const { data: workerData } = await window.supabaseClient
+              .from('workers')
+              .insert({
+                player_id: window.currentUser.id,
+                type_id: 'WORKER',
+                x: sp.x,
+                y: sp.y,
+                health: 50
+              })
+              .select()
+              .single();
+
+            const newWorker = new NPC(NPC_TYPES.WORKER, sp.x, sp.y);
+            if (workerData) {
+              newWorker.dbId = workerData.id;
+              newWorker.training_started_at = workerData.training_started_at;
+            }
+            window.npcManager.npcs.push(newWorker);
+            window.npcManager.counts.worker++;
+          }
+        } else {
+          // Load existing base
+          structureManager.buildings = [];
+          if (buildingsData) {
+            buildingsData.forEach(bData => {
+              const b = new Structure(bData.type_id, bData.x, bData.y);
+              b.dbId = bData.id;
+              b.health = bData.health;
+              b.construction_started_at = bData.construction_started_at;
+              structureManager.buildings.push(b);
+            });
+          }
+
+          window.npcManager.npcs = [];
+          window.npcManager.counts = { worker: 0, soldier: 0, medic: 0 };
+          if (workersData) {
+            workersData.forEach(wData => {
+              const typeKey = wData.type_id.toUpperCase();
+              const typeObj = NPC_TYPES[typeKey];
+              if (typeObj) {
+                const w = new NPC(typeObj, wData.x, wData.y);
+                w.dbId = wData.id;
+                w.health = wData.health;
+                w.training_started_at = wData.training_started_at;
+                window.npcManager.npcs.push(w);
+                window.npcManager.counts[typeKey.toLowerCase()]++;
+              }
+            });
+          }
+        }
+
+        structureManager.updateResourceUI();
         window.npcManager.updateUI();
       }
     };

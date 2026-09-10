@@ -85,9 +85,48 @@ class WorldMap {
     ctx.stroke();
   }
 
+  async fetchOtherPlayers() {
+    if (!window.supabaseClient || !window.currentUser) return;
+
+    const { data: players } = await window.supabaseClient
+      .from('players')
+      .select('*')
+      .neq('id', window.currentUser.id);
+
+    if (players) {
+      this.otherPlayers = players;
+    }
+  }
+
   draw(ctx) {
     for (const hex of this.hexes) {
       this.drawHex(ctx, hex.x, hex.y, this.hexRadius, hex.color, hex.state);
+
+      // Draw home base indicator for current player
+      if (window.currentUser && hex.q === window.currentUser.hex_x && hex.r === window.currentUser.hex_y) {
+        ctx.fillStyle = '#4299e1'; // Blue for home base
+        ctx.beginPath();
+        ctx.arc(hex.x, hex.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Draw indicators for other players
+      if (this.otherPlayers) {
+        for (const player of this.otherPlayers) {
+          if (hex.q === player.hex_x && hex.r === player.hex_y) {
+            ctx.fillStyle = '#e53e3e'; // Red for enemy bases
+            ctx.beginPath();
+            ctx.arc(hex.x, hex.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+      }
     }
   }
 
