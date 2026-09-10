@@ -5,7 +5,6 @@ class MissionManager {
     this.missions = [];
     this.activeDeployments = [];
     
-    this.initUI();
     this.generateMissions(3);
   }
 
@@ -46,104 +45,6 @@ class MissionManager {
     }
   }
 
-  initUI() {
-    this.uiContainer = document.createElement('div');
-    this.uiContainer.id = 'mission-menu';
-    this.uiContainer.style.cssText = `
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(26, 32, 44, 0.98); color: white; padding: 20px; 
-      border-radius: 8px; font-family: sans-serif; width: 480px; 
-      border: 1px solid #4a5568; display: none; z-index: 100;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-    `;
-    document.body.appendChild(this.uiContainer);
-  }
-
-  openMenu() {
-    this.uiContainer.style.display = 'block';
-    this.renderMenu();
-  }
-
-  closeMenu() {
-    this.uiContainer.style.display = 'none';
-  }
-
-  renderMenu() {
-    let html = `
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #4a5568; padding-bottom: 10px; margin-bottom: 10px;">
-        <h3 style="margin: 0;">Gunship Mission Control</h3>
-        <button onclick="window.missionManager.closeMenu()" style="background: #e53e3e; border: none; color: white; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-weight: bold;">X</button>
-      </div>
-      <div style="margin-bottom: 10px; color: #63b3ed; font-size: 14px;">
-        Available Troops: <b>${this.npcManager.counts.soldier} Soldiers</b> | <b>${this.npcManager.counts.medic} Medics</b>
-      </div>
-      <div style="max-height: 400px; overflow-y: auto;">
-    `;
-
-    this.missions.forEach((m, index) => {
-      const durationMins = Math.round(m.duration / 3600);
-      html += `
-        <div style="background: #2d3748; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #4a5568;">
-          <h4 style="margin: 0 0 5px 0; color: #fbd38d;">${m.name}</h4>
-          <div style="font-size: 13px; margin-bottom: 8px; line-height: 1.4;">
-            Difficulty: <span style="color: #ecc94b">${'★'.repeat(m.difficulty)}${'☆'.repeat(5 - m.difficulty)}</span><br>
-            Duration: <b>${durationMins} min${durationMins > 1 ? 's' : ''}</b> | Required: <span style="color: #fc8181; font-weight: bold;">${m.minSoldiers} Soldiers, ${m.minMedics} Medics</span><br>
-            Rewards: St:${m.rewards.steel} Wd:${m.rewards.wood} Fd:${m.rewards.food}
-          </div>
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <label style="font-size: 12px;">Soldiers:<br><input type="number" id="deploy-s-${index}" min="0" max="${this.npcManager.counts.soldier}" value="0" style="width: 50px; background: #1a202c; color: white; border: 1px solid #4a5568; padding: 4px; border-radius: 4px;"></label>
-            <label style="font-size: 12px;">Medics:<br><input type="number" id="deploy-m-${index}" min="0" max="${this.npcManager.counts.medic}" value="0" style="width: 50px; background: #1a202c; color: white; border: 1px solid #4a5568; padding: 4px; border-radius: 4px;"></label>
-            <button onclick="window.missionManager.deploy(${index})" style="background: #48bb78; border: none; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-left: auto; font-weight: bold;">Deploy</button>
-          </div>
-        </div>
-      `;
-    });
-    
-    if (this.activeDeployments.length > 0) {
-      html += `<hr style="border-color: #4a5568; margin: 15px 0;"><h4 style="margin: 0 0 10px 0;">Active Deployments</h4>`;
-      this.activeDeployments.forEach(d => {
-        const progress = Math.round((1 - (d.timer / d.duration)) * 100);
-        const remainingSecs = Math.ceil(d.timer / 60);
-        const remMins = Math.floor(remainingSecs / 60);
-        const remSecs = remainingSecs % 60;
-        const timeStr = remMins > 0 ? `${remMins}m ${remSecs}s left` : `${remSecs}s left`;
-        
-        html += `<div style="font-size: 13px; color: #a0aec0; margin-bottom: 5px; background: #1a202c; padding: 8px; border-radius: 4px; display: flex; justify-content: space-between;">
-          <span>${d.mission.name}</span>
-          <span>${progress}% (${timeStr})</span>
-        </div>`;
-      });
-    }
-
-    html += `</div>`;
-    this.uiContainer.innerHTML = html;
-  }
-
-  deploy(index) {
-    const sInput = document.getElementById(`deploy-s-${index}`);
-    const mInput = document.getElementById(`deploy-m-${index}`);
-    const sCount = parseInt(sInput.value) || 0;
-    const mCount = parseInt(mInput.value) || 0;
-    const mission = this.missions[index];
-
-    if (sCount < mission.minSoldiers || mCount < mission.minMedics) {
-      return alert(`This mission requires at least ${mission.minSoldiers} Soldiers and ${mission.minMedics} Medics. You assigned ${sCount} Soldiers and ${mCount} Medics.`);
-    }
-    if (sCount > this.npcManager.counts.soldier || mCount > this.npcManager.counts.medic) {
-      return alert("You do not have enough troops available!");
-    }
-
-    this.removeTroops('SOLDIER', sCount);
-    this.removeTroops('MEDIC', mCount);
-    
-    const acceptedMission = this.missions.splice(index, 1)[0];
-    this.activeDeployments.push({ mission: acceptedMission, timer: acceptedMission.duration, duration: acceptedMission.duration, soldiers: sCount, medics: mCount });
-
-    this.generateMissions(1); // Replace accepted mission
-    this.renderMenu();
-    this.npcManager.updateUI();
-  }
-
   removeTroops(typeId, count) {
     let removed = 0;
     for (let i = this.npcManager.npcs.length - 1; i >= 0; i--) {
@@ -154,6 +55,7 @@ class MissionManager {
         removed++;
       }
     }
+    this.npcManager.updateUI();
   }
 
   update() {
@@ -161,9 +63,17 @@ class MissionManager {
       const d = this.activeDeployments[i];
       d.timer--;
       if (d.timer <= 0) {
-        this.resolveMission(d);
+        if (d.type === 'deploy') {
+          this.resolveMission(d);
+        } else if (d.type === 'recall') {
+          this.resolveRecall(d);
+        }
         this.activeDeployments.splice(i, 1);
-        if (this.uiContainer.style.display === 'block') this.renderMenu();
+
+        // Refresh hex panel if it is currently viewing this hex
+        if (window.worldMap && window.worldMap.selectedHex === d.hex && window.worldMap.openDeployMenu) {
+            window.worldMap.openDeployMenu(d.hex); // Re-render the menu
+        }
       }
     }
   }
@@ -188,23 +98,55 @@ class MissionManager {
     for(let s=0; s<d.soldiers; s++) { if(Math.random() > (success ? 0.1 : 0.4)) survivingSoldiers++; }
     for(let m=0; m<d.medics; m++) { if(Math.random() > (success ? 0.05 : 0.3)) survivingMedics++; }
     
+    msg += `Casualties:\nSoldiers: ${d.soldiers - survivingSoldiers} lost\nMedics: ${d.medics - survivingMedics} lost`;
+
+    if (success) {
+      d.hex.state = 'HELD';
+      d.hex.garrison = {
+        soldiers: survivingSoldiers,
+        medics: survivingMedics
+      };
+      msg += `\n\nTerritory Secured! Garrison left on site.`;
+    } else {
+      d.hex.state = 'EMPTY';
+      // If failed, troops are routed/lost. They do not hold the hex.
+      // (Any survivors are lost in the wilderness)
+      msg += `\n\nForces routed. Hex remains empty.`;
+    }
+
+    this.showNotification(msg, success);
+  }
+
+  resolveRecall(d) {
+    const hex = d.hex;
+
+    let soldiersToReturn = 0;
+    let medicsToReturn = 0;
+
+    if (hex.garrison) {
+      soldiersToReturn = hex.garrison.soldiers;
+      medicsToReturn = hex.garrison.medics;
+    }
+
     const gunship = this.structureManager.buildings.find(b => b.type.id === 'GUNSHIP');
     const spawnX = gunship ? gunship.x + gunship.type.width/2 : 0;
     const spawnY = gunship ? gunship.y + gunship.type.height + 20 : 0;
 
-    for(let s=0; s<survivingSoldiers; s++) {
+    for(let s=0; s<soldiersToReturn; s++) {
       this.npcManager.npcs.push(new Soldier(spawnX + (Math.random()*40-20), spawnY + (Math.random()*20)));
       this.npcManager.counts.soldier++;
     }
-    for(let m=0; m<survivingMedics; m++) {
+    for(let m=0; m<medicsToReturn; m++) {
       this.npcManager.npcs.push(new Medic(spawnX + (Math.random()*40-20), spawnY + (Math.random()*20)));
       this.npcManager.counts.medic++;
     }
 
-    msg += `Casualties:\nSoldiers: ${d.soldiers - survivingSoldiers} lost\nMedics: ${d.medics - survivingMedics} lost`;
+    hex.state = 'EMPTY';
+    hex.garrison = null;
+    hex.mission = null; // Clear old mission so a new one can generate
     
     this.npcManager.updateUI();
-    this.showNotification(msg, success);
+    this.showNotification(`Troops successfully recalled from territory.`, true);
   }
 
   showNotification(msg, success) {
