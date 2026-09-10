@@ -38,8 +38,7 @@ class MissionManager {
         minMedics: reqs.medics,
         rewards: {
           steel: Math.floor(Math.random() * 100 * difficulty * 2),
-          wood: Math.floor(Math.random() * 80 * difficulty * 2),
-          food: Math.floor(Math.random() * 50 * difficulty * 2)
+          oil: Math.floor(Math.random() * 50 * difficulty * 2)
         }
       });
     }
@@ -88,9 +87,8 @@ class MissionManager {
 
     if (success) {
       this.structureManager.addResource('steel', d.mission.rewards.steel);
-      this.structureManager.addResource('wood', d.mission.rewards.wood);
-      this.structureManager.addResource('food', d.mission.rewards.food);
-      msg += `Gained: St:${d.mission.rewards.steel}, Wd:${d.mission.rewards.wood}, Fd:${d.mission.rewards.food}\n`;
+      this.structureManager.addResource('oil', d.mission.rewards.oil);
+      msg += `Gained: Steel:${d.mission.rewards.steel}, Oil:${d.mission.rewards.oil}\n`;
     }
 
     let survivingSoldiers = 0;

@@ -1,7 +1,7 @@
 const NPC_TYPES = {
-  WORKER: { id: 'WORKER', name: 'Worker', cost: { food: 50, water: 20 }, health: 50, speed: 0.8, color: '#ed8936', size: 10, buildTime: 300, reqBuilding: 'WORKER_HUT' },
-  SOLDIER: { id: 'SOLDIER', name: 'Soldier', cost: { steel: 50, food: 50, water: 20 }, health: 150, speed: 1.2, color: '#e53e3e', size: 12, buildTime: 400, reqBuilding: 'BARRACKS' },
-  MEDIC: { id: 'MEDIC', name: 'Medic', cost: { wood: 20, food: 30, water: 50 }, health: 80, speed: 1.0, color: '#fc8181', size: 10, buildTime: 400, reqBuilding: 'MEDIC_STATION' }
+  WORKER: { id: 'WORKER', name: 'Worker', cost: { steel: 50, oil: 20 }, health: 50, speed: 0.8, color: '#ed8936', size: 10, buildTime: 300, reqBuilding: 'WORKER_HUT' },
+  SOLDIER: { id: 'SOLDIER', name: 'Soldier', cost: { steel: 100, oil: 20 }, health: 150, speed: 1.2, color: '#e53e3e', size: 12, buildTime: 400, reqBuilding: 'BARRACKS' },
+  MEDIC: { id: 'MEDIC', name: 'Medic', cost: { steel: 50, oil: 50 }, health: 80, speed: 1.0, color: '#fc8181', size: 10, buildTime: 400, reqBuilding: 'MEDIC_STATION' }
 };
 
 class NPC {
@@ -495,13 +495,8 @@ class NPCManager {
     }
 
     if (this.structureManager.tick % 60 === 0) {
-      const outOfFood = (this.structureManager.resources.food || 0) <= 0;
-      const outOfWater = (this.structureManager.resources.water || 0) <= 0;
-      
       for (let i = this.npcs.length - 1; i >= 0; i--) {
         const npc = this.npcs[i];
-        if (outOfFood) npc.health -= 5;
-        if (outOfWater) npc.health -= 5;
 
         if (npc.health <= 0) {
           this.counts[npc.type.id.toLowerCase()]--;
