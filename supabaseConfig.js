@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+const SUPABASE_URL = 'https://ciafbekrxnaglfpuyyjs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_VwSCglUJmHIC6WZz8NI0XQ_xPBChtf4';
 
 // Initialize the Supabase client
 // This assumes the Supabase library is loaded via CDN globally in index.html as 'supabase'

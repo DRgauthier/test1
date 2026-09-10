@@ -16,8 +16,8 @@ INSERT INTO public.settings (id, value) VALUES ('world_seed', '12345') ON CONFLI
 CREATE TABLE IF NOT EXISTS public.players (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
-    base_x INTEGER, -- Optional: overworld X coordinate of the player's base
-    base_y INTEGER, -- Optional: overworld Y coordinate of the player's base
+    hex_x INTEGER, -- overworld Hex X coordinate of the player's base
+    hex_y INTEGER, -- overworld Hex Y coordinate of the player's base
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS public.buildings (
     x NUMERIC NOT NULL,
     y NUMERIC NOT NULL,
     health NUMERIC NOT NULL,
+    construction_started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS public.workers (
     x NUMERIC NOT NULL,
     y NUMERIC NOT NULL,
     health NUMERIC NOT NULL,
+    training_started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -54,19 +56,19 @@ ALTER TABLE public.workers ENABLE ROW LEVEL SECURITY;
 -- Settings: Anyone can read, no one can write via client
 CREATE POLICY "Enable read access for all users" ON public.settings FOR SELECT USING (true);
 
--- Players: Anyone can read, users can only update their own record
-CREATE POLICY "Enable read access for all users" ON public.players FOR SELECT USING (true);
+-- Players: Authenticated users can read, users can only update their own record
+CREATE POLICY "Enable read access for authenticated users" ON public.players FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Enable insert for users based on user_id" ON public.players FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Enable update for users based on user_id" ON public.players FOR UPDATE USING (auth.uid() = id);
 
--- Buildings: Anyone can read, users can only insert/update/delete their own buildings
-CREATE POLICY "Enable read access for all users" ON public.buildings FOR SELECT USING (true);
+-- Buildings: Authenticated users can read, users can only insert/update/delete their own buildings
+CREATE POLICY "Enable read access for authenticated users" ON public.buildings FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Enable insert for authenticated users only" ON public.buildings FOR INSERT WITH CHECK (auth.uid() = player_id);
 CREATE POLICY "Enable update for users based on user_id" ON public.buildings FOR UPDATE USING (auth.uid() = player_id);
 CREATE POLICY "Enable delete for users based on user_id" ON public.buildings FOR DELETE USING (auth.uid() = player_id);
 
--- Workers: Anyone can read, users can only insert/update/delete their own workers
-CREATE POLICY "Enable read access for all users" ON public.workers FOR SELECT USING (true);
+-- Workers: Authenticated users can read, users can only insert/update/delete their own workers
+CREATE POLICY "Enable read access for authenticated users" ON public.workers FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Enable insert for authenticated users only" ON public.workers FOR INSERT WITH CHECK (auth.uid() = player_id);
 CREATE POLICY "Enable update for users based on user_id" ON public.workers FOR UPDATE USING (auth.uid() = player_id);
 CREATE POLICY "Enable delete for users based on user_id" ON public.workers FOR DELETE USING (auth.uid() = player_id);

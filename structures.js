@@ -210,19 +210,8 @@ class StructureManager {
       lastNetSteel: 0, lastNetOil: 0
     };
 
-    this.initStarterBase();
-    this.updateResourceUI();
-  }
-
-  initStarterBase() {
     this.resources = { steel: 500, oil: 500 };
-
-    this.buildings.push(new Structure('HEADQUARTERS', -75, -75)); 
-    this.buildings.push(new Structure('SUPPLY_DEPOT', 120, -75));
-    this.buildings.push(new Structure('WORKER_HUT', -200, -50));
-    
-    this.buildings.push(new Structure('OIL_PUMP', -50, 150));
-    this.buildings.push(new Structure('STEEL_MINE', 200, 20));
+    this.updateResourceUI();
   }
 
   getAOERadius() {
@@ -505,7 +494,7 @@ class StructureManager {
     }
   }
 
-  placeBuilding() {
+  async placeBuilding() {
     if (!this.isBuilding || !this.pendingBuildingType || !this.isValidPlacement) return;
 
     this.deductCost(this.pendingBuildingType.cost);
@@ -514,19 +503,46 @@ class StructureManager {
     const newBuilding = new Structure(this.pendingBuildingType.id, this.ghostX, this.ghostY);
     this.buildings.push(newBuilding);
     
+    if (window.supabaseClient && window.currentUser) {
+      const { data, error } = await window.supabaseClient
+        .from('buildings')
+        .insert({
+          player_id: window.currentUser.id,
+          type_id: newBuilding.type.id,
+          x: newBuilding.x,
+          y: newBuilding.y,
+          health: newBuilding.health
+        })
+        .select()
+        .single();
+
+      if (data) {
+        newBuilding.dbId = data.id;
+        newBuilding.construction_started_at = data.construction_started_at;
+      }
+    }
+
     this.cancelAction();
 
     const confirmUI = document.getElementById('build-confirm-ui');
     if (confirmUI) confirmUI.style.display = 'none';
   }
 
-  deconstructBuilding() {
+  async deconstructBuilding() {
     if (!this.isDeconstructing || !this.hoveredBuilding) return;
 
-    this.buildings = this.buildings.filter(b => b !== this.hoveredBuilding);
-    this.refundCost(this.hoveredBuilding.type.cost);
+    const buildingToRemove = this.hoveredBuilding;
+    this.buildings = this.buildings.filter(b => b !== buildingToRemove);
+    this.refundCost(buildingToRemove.type.cost);
     this.updateResourceUI();
     
+    if (window.supabaseClient && buildingToRemove.dbId) {
+      await window.supabaseClient
+        .from('buildings')
+        .delete()
+        .eq('id', buildingToRemove.dbId);
+    }
+
     this.hoveredBuilding = null;
   }
 
