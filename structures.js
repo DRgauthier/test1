@@ -1,18 +1,16 @@
 const GRID_SIZE = 50;
 
 const BUILDING_TYPES = {
-  HEADQUARTERS: { id: 'HEADQUARTERS', name: 'Command Center', width: 150, height: 150, color: '#4299e1', cost: { steel: 200, wood: 200, food: 0, water: 0 }, caps: { worker: 5, soldier: 5, medic: 0 } },
-  BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 100, wood: 50, food: 0, water: 0 }, caps: { soldier: 10 } },
-  SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 50, wood: 50, food: 0, water: 0 } },
-  GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 300, wood: 100, food: 0, water: 0 } },
-  TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, wood: 0, food: 0, water: 0 } },
-  WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 20, wood: 50, food: 0, water: 0 }, caps: { worker: 8 } },
-  MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 50, wood: 50, food: 0, water: 50 }, caps: { medic: 5 } },
+  HEADQUARTERS: { id: 'HEADQUARTERS', name: 'Command Center', width: 150, height: 150, color: '#4299e1', cost: { steel: 400, oil: 0 }, caps: { worker: 5, soldier: 5, medic: 0 } },
+  BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 150, oil: 0 }, caps: { soldier: 10 } },
+  SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 100, oil: 0 } },
+  GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 } },
+  TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, oil: 0 } },
+  WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 70, oil: 0 }, caps: { worker: 8 } },
+  MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 100, oil: 50 }, caps: { medic: 5 } },
   
-  STEEL_MINE: { id: 'STEEL_MINE', name: 'Steel Mine', width: 60, height: 60, color: '#a0aec0', cost: { steel: 0, wood: 50, food: 20, water: 0 }, generates: 'steel' },
-  LUMBER_MILL: { id: 'LUMBER_MILL', name: 'Lumber Mill', width: 60, height: 60, color: '#975a16', cost: { steel: 20, wood: 0, food: 20, water: 0 }, generates: 'wood' },
-  FARM: { id: 'FARM', name: 'Farm', width: 80, height: 80, color: '#f6e05e', cost: { steel: 10, wood: 40, food: 0, water: 20 }, generates: 'food' },
-  WATER_PUMP: { id: 'WATER_PUMP', name: 'Water Pump', width: 50, height: 50, color: '#63b3ed', cost: { steel: 40, wood: 10, food: 0, water: 0 }, generates: 'water' }
+  STEEL_MINE: { id: 'STEEL_MINE', name: 'Steel Mine', width: 60, height: 60, color: '#a0aec0', cost: { steel: 70, oil: 0 }, generates: 'steel' },
+  OIL_PUMP: { id: 'OIL_PUMP', name: 'Oil Pump', width: 50, height: 50, color: '#63b3ed', cost: { steel: 50, oil: 0 }, generates: 'oil' }
 };
 
 class Structure {
@@ -208,9 +206,8 @@ class StructureManager {
     this.tick = 0;
     this.dayLength = 600; 
     this.dailyStats = {
-      foodGained: 0, waterGained: 0,
-      foodConsumed: 0, waterConsumed: 0,
-      lastNetFood: 0, lastNetWater: 0
+      steelGained: 0, oilGained: 0,
+      lastNetSteel: 0, lastNetOil: 0
     };
 
     this.initStarterBase();
@@ -218,15 +215,13 @@ class StructureManager {
   }
 
   initStarterBase() {
-    this.resources = { steel: 500, wood: 500, food: 500, water: 500 };
+    this.resources = { steel: 500, oil: 500 };
 
     this.buildings.push(new Structure('HEADQUARTERS', -75, -75)); 
     this.buildings.push(new Structure('SUPPLY_DEPOT', 120, -75));
     this.buildings.push(new Structure('WORKER_HUT', -200, -50));
     
-    this.buildings.push(new Structure('FARM', -200, 100));
-    this.buildings.push(new Structure('WATER_PUMP', -50, 150));
-    this.buildings.push(new Structure('LUMBER_MILL', 100, 120));
+    this.buildings.push(new Structure('OIL_PUMP', -50, 150));
     this.buildings.push(new Structure('STEEL_MINE', 200, 20));
   }
 
@@ -254,28 +249,15 @@ class StructureManager {
     this.tick++;
 
     if (this.tick % 60 === 0) {
-      const consumeRate = npcCount * 0.15; 
-      
-      const actualFoodEaten = Math.min(this.resources.food, consumeRate);
-      const actualWaterDrank = Math.min(this.resources.water, consumeRate);
-
-      this.resources.food -= actualFoodEaten;
-      this.resources.water -= actualWaterDrank;
-
-      this.dailyStats.foodConsumed += actualFoodEaten;
-      this.dailyStats.waterConsumed += actualWaterDrank;
-
       this.updateResourceUI();
     }
 
     if (this.tick >= this.dayLength) {
-      this.dailyStats.lastNetFood = this.dailyStats.foodGained - this.dailyStats.foodConsumed;
-      this.dailyStats.lastNetWater = this.dailyStats.waterGained - this.dailyStats.waterConsumed;
+      this.dailyStats.lastNetSteel = this.dailyStats.steelGained;
+      this.dailyStats.lastNetOil = this.dailyStats.oilGained;
       
-      this.dailyStats.foodGained = 0;
-      this.dailyStats.waterGained = 0;
-      this.dailyStats.foodConsumed = 0;
-      this.dailyStats.waterConsumed = 0;
+      this.dailyStats.steelGained = 0;
+      this.dailyStats.oilGained = 0;
       
       this.tick = 0;
       this.updateResourceUI();
@@ -321,8 +303,8 @@ class StructureManager {
     
     this.resources[type] += actualGain;
 
-    if (type === 'food') this.dailyStats.foodGained += actualGain;
-    if (type === 'water') this.dailyStats.waterGained += actualGain;
+    if (type === 'steel') this.dailyStats.steelGained += actualGain;
+    if (type === 'oil') this.dailyStats.oilGained += actualGain;
 
     this.updateResourceUI();
   }
@@ -363,24 +345,22 @@ class StructureManager {
       const cap = this.getMaxCapacity();
       
       const st = Math.floor(this.resources.steel);
-      const wd = Math.floor(this.resources.wood);
-      const fd = Math.floor(this.resources.food);
-      const wt = Math.floor(this.resources.water);
+      const oil = Math.floor(this.resources.oil);
 
-      const netFd = Math.floor(this.dailyStats.lastNetFood);
-      const netWt = Math.floor(this.dailyStats.lastNetWater);
+      const netSt = Math.floor(this.dailyStats.lastNetSteel);
+      const netOil = Math.floor(this.dailyStats.lastNetOil);
 
-      const fdColor = netFd >= 0 ? '#48bb78' : '#fc8181';
-      const wtColor = netWt >= 0 ? '#48bb78' : '#fc8181';
-      const fdSign = netFd >= 0 ? '+' : '';
-      const wtSign = netWt >= 0 ? '+' : '';
+      const stColor = netSt >= 0 ? '#48bb78' : '#fc8181';
+      const oilColor = netOil >= 0 ? '#48bb78' : '#fc8181';
+      const stSign = netSt >= 0 ? '+' : '';
+      const oilSign = netOil >= 0 ? '+' : '';
 
       display.innerHTML = `
-        <div>St: ${st} | Wd: ${wd} | Fd: ${fd} | Wt: ${wt} | Cap: ${cap}</div>
+        <div>Steel: ${st} | Oil: ${oil} | Cap: ${cap}</div>
         <div style="font-size: 13px; font-weight: normal; color: #cbd5e0; margin-top: 4px;">
-          Past 10s Net Rate &raquo; 
-          <span style="color: ${fdColor}">Food: ${fdSign}${netFd}</span> | 
-          <span style="color: ${wtColor}">Water: ${wtSign}${netWt}</span>
+          Past 10s Rate &raquo;
+          <span style="color: ${stColor}">Steel: ${stSign}${netSt}</span> |
+          <span style="color: ${oilColor}">Oil: ${oilSign}${netOil}</span>
         </div>
       `;
     }
