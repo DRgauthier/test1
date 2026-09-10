@@ -127,6 +127,10 @@ function initCamera(canvas) {
     
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
+
+    if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+      window.worldMap.closeDeployMenu();
+    }
   });
 
   window.addEventListener('mouseup', (e) => {
@@ -225,6 +229,8 @@ function initCamera(canvas) {
           cam.x, cam.y, cam.zoom,
           window.innerWidth, window.innerHeight
         );
+      } else if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+        window.worldMap.closeDeployMenu();
       }
     } else if (e.touches.length === 2) {
       const t1 = e.touches[0];
@@ -241,6 +247,10 @@ function initCamera(canvas) {
 
       cam.x = worldX - (pinchCenterX - window.innerWidth / 2) / cam.zoom;
       cam.y = worldY - (pinchCenterY - window.innerHeight / 2) / cam.zoom;
+
+      if (sceneManager.currentScene === 'WORLD' && window.worldMap) {
+        window.worldMap.closeDeployMenu();
+      }
     }
   }, { passive: false });
 

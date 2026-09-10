@@ -102,6 +102,8 @@ class WorldMap {
     const clickedHex = this.getHexAt(worldX, worldY);
     if (clickedHex) {
       this.openDeployMenu(clickedHex);
+    } else {
+      this.closeDeployMenu();
     }
   }
 

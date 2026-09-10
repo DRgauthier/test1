@@ -15,6 +15,10 @@ class SceneManager {
       if (npcMenu) {
         npcMenu.style.display = 'none';
       }
+      const missionMenu = document.getElementById('mission-menu');
+      if (missionMenu) {
+        missionMenu.style.display = 'none';
+      }
     } else {
       this.currentScene = 'BASE';
       // Show base building UI
