@@ -270,15 +270,30 @@
   <script src="missions.js"></script>
   <!-- Authentication UI -->
   <div id="auth-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;">
-    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center;">
-      <h2 style="margin-top: 0;">Login / Signup</h2>
-      <input type="email" id="auth-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
-      <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 20px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button id="auth-login-btn" style="padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Login</button>
-        <button id="auth-signup-btn" style="padding: 10px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Signup</button>
+    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center; position: relative;">
+
+      <!-- Main Menu -->
+      <div id="auth-main-menu">
+        <h2 style="margin-top: 0;">Welcome</h2>
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+          <button id="nav-login-btn" style="padding: 12px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Log in</button>
+          <button id="nav-signup-btn" style="padding: 12px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Sign up</button>
+          <button id="nav-settings-btn" style="padding: 12px 20px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Settings</button>
+        </div>
       </div>
-      <div id="auth-error" style="color: #fc8181; margin-top: 15px; font-size: 14px;"></div>
+
+      <!-- Auth Form (Hidden by default) -->
+      <div id="auth-form-menu" style="display: none;">
+        <button id="auth-back-btn" style="position: absolute; top: 15px; left: 15px; background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 14px;">&#8592; Back</button>
+        <h2 id="auth-title" style="margin-top: 0;"></h2>
+        <input type="email" id="auth-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+        <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 20px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+
+        <button id="auth-submit-btn" style="padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;"></button>
+
+        <div id="auth-error" style="color: #fc8181; margin-top: 15px; font-size: 14px;"></div>
+      </div>
+
     </div>
   </div>
 
