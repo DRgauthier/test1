@@ -6,6 +6,12 @@ class SceneManager {
   toggleScene() {
     if (this.currentScene === 'BASE') {
       this.currentScene = 'WORLD';
+
+      // Cancel any ongoing building/deconstructing actions
+      if (window.structureManager) {
+        window.structureManager.cancelAction();
+      }
+
       // Hide base building UI
       const buildMenu = document.getElementById('build-menu-container');
       if (buildMenu) {

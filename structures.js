@@ -390,17 +390,75 @@ class StructureManager {
     return this.devMode;
   }
 
+  validateGhostPlacement() {
+    if (!this.pendingBuildingType) return;
+
+    const hasCollision = this.checkCollision(
+      this.ghostX, this.ghostY,
+      this.pendingBuildingType.width, this.pendingBuildingType.height
+    );
+
+    const canAfford = this.canAfford(this.pendingBuildingType.cost);
+
+    let isWithinAOE = false;
+    const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
+
+    if (hq) {
+      const hqCenterX = hq.x + hq.type.width / 2;
+      const hqCenterY = hq.y + hq.type.height / 2;
+      const radius = this.getAOERadius();
+
+      const ghostCenterX = this.ghostX + this.pendingBuildingType.width / 2;
+      const ghostCenterY = this.ghostY + this.pendingBuildingType.height / 2;
+
+      const dist = Math.hypot(ghostCenterX - hqCenterX, ghostCenterY - hqCenterY);
+      if (dist <= radius) {
+        isWithinAOE = true;
+      }
+    }
+
+    if (!hq && this.pendingBuildingType.id === 'HEADQUARTERS') {
+      isWithinAOE = true;
+    }
+
+    this.isValidPlacement = !hasCollision && canAfford && isWithinAOE;
+
+    // Update UI
+    const confirmBtn = document.getElementById('build-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.disabled = !this.isValidPlacement;
+    }
+  }
+
   startBuilding(typeId) {
     if (!BUILDING_TYPES[typeId]) return;
     this.pendingBuildingType = BUILDING_TYPES[typeId];
     this.isBuilding = true;
     this.isDeconstructing = false;
+
+    if (window.getCameraCenter) {
+      const center = window.getCameraCenter();
+      const gridSize = 50;
+      this.ghostX = Math.floor(center.x / gridSize) * gridSize;
+      this.ghostY = Math.floor(center.y / gridSize) * gridSize;
+    } else {
+      this.ghostX = 0;
+      this.ghostY = 0;
+    }
+
+    this.validateGhostPlacement();
+
+    const confirmUI = document.getElementById('build-confirm-ui');
+    if (confirmUI) confirmUI.style.display = 'flex';
   }
 
   startDeconstructing() {
     this.isBuilding = false;
     this.isDeconstructing = true;
     this.pendingBuildingType = null;
+
+    const confirmUI = document.getElementById('build-confirm-ui');
+    if (confirmUI) confirmUI.style.display = 'none';
   }
 
   cancelAction() {
@@ -408,6 +466,9 @@ class StructureManager {
     this.isDeconstructing = false;
     this.pendingBuildingType = null;
     this.hoveredBuilding = null;
+
+    const confirmUI = document.getElementById('build-confirm-ui');
+    if (confirmUI) confirmUI.style.display = 'none';
   }
 
   checkCollision(x, y, width, height) {
@@ -424,46 +485,29 @@ class StructureManager {
     return false;
   }
 
+  isOverGhost(worldX, worldY) {
+    if (!this.isBuilding || !this.pendingBuildingType) return false;
+    return (
+      worldX >= this.ghostX &&
+      worldX <= this.ghostX + this.pendingBuildingType.width &&
+      worldY >= this.ghostY &&
+      worldY <= this.ghostY + this.pendingBuildingType.height
+    );
+  }
+
+  dragGhost(worldX, worldY) {
+    if (!this.isBuilding || !this.pendingBuildingType) return;
+    const gridSize = 50;
+    this.ghostX = Math.floor(worldX / gridSize) * gridSize;
+    this.ghostY = Math.floor(worldY / gridSize) * gridSize;
+    this.validateGhostPlacement();
+  }
+
   updateMousePosition(mouseX, mouseY, cameraX, cameraY, zoom, canvasWidth, canvasHeight) {
     const worldX = (mouseX - canvasWidth / 2) / zoom + cameraX;
     const worldY = (mouseY - canvasHeight / 2) / zoom + cameraY;
 
-    if (this.isBuilding && this.pendingBuildingType) {
-      const gridSize = 50;
-      this.ghostX = Math.floor(worldX / gridSize) * gridSize;
-      this.ghostY = Math.floor(worldY / gridSize) * gridSize;
-
-      const hasCollision = this.checkCollision(
-        this.ghostX, this.ghostY, 
-        this.pendingBuildingType.width, this.pendingBuildingType.height
-      );
-      
-      const canAfford = this.canAfford(this.pendingBuildingType.cost);
-
-      let isWithinAOE = false;
-      const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
-      
-      if (hq) {
-        const hqCenterX = hq.x + hq.type.width / 2;
-        const hqCenterY = hq.y + hq.type.height / 2;
-        const radius = this.getAOERadius();
-        
-        const ghostCenterX = this.ghostX + this.pendingBuildingType.width / 2;
-        const ghostCenterY = this.ghostY + this.pendingBuildingType.height / 2;
-        
-        const dist = Math.hypot(ghostCenterX - hqCenterX, ghostCenterY - hqCenterY);
-        if (dist <= radius) {
-          isWithinAOE = true;
-        }
-      }
-      
-      if (!hq && this.pendingBuildingType.id === 'HEADQUARTERS') {
-        isWithinAOE = true;
-      }
-
-      this.isValidPlacement = !hasCollision && canAfford && isWithinAOE;
-    } 
-    else if (this.isDeconstructing) {
+    if (this.isDeconstructing) {
       this.hoveredBuilding = null;
       for (let i = this.buildings.length - 1; i >= 0; i--) {
         const b = this.buildings[i];
@@ -521,7 +565,9 @@ class StructureManager {
 
     if (this.isBuilding && this.pendingBuildingType) {
       ctx.globalAlpha = 0.5;
-      ctx.fillStyle = this.isValidPlacement ? this.pendingBuildingType.color : '#f56565';
+      // Use green for valid, red for invalid, unless the color itself is green then keep it green.
+      // But user requested "green for valid, red for invalid", so let's override the color for ghost
+      ctx.fillStyle = this.isValidPlacement ? '#48bb78' : '#f56565';
       ctx.fillRect(this.ghostX, this.ghostY, this.pendingBuildingType.width, this.pendingBuildingType.height);
       
       ctx.strokeStyle = this.isValidPlacement ? '#ffffff' : '#9b2c2c';

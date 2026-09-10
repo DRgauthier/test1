@@ -27,7 +27,8 @@ function initCamera(canvas) {
   };
 
   let isDragging = false;
-  let hasDragged = false; 
+  let hasDragged = false;
+  let isDraggingBuilding = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
 
@@ -44,27 +45,61 @@ function initCamera(canvas) {
     return cameras[sceneManager.currentScene];
   }
 
+  window.getCameraCenter = function() {
+    const cam = cameras['BASE'];
+    // The screen center maps to the world coordinate currently at the screen center.
+    // worldX = (mouseX - windowWidth/2) / zoom + cam.x
+    // So if mouseX = windowWidth/2, worldX = cam.x
+    return {
+      x: cam.x,
+      y: cam.y
+    };
+  };
+
   canvas.style.cursor = 'grab';
 
   canvas.addEventListener('mousedown', (e) => {
-    isDragging = true;
     hasDragged = false; 
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
     
-    if (sceneManager.currentScene === 'BASE') {
-      if (!structureManager.isBuilding && !structureManager.isDeconstructing) {
+    const cam = getCurrentCamera();
+    const rect = canvas.getBoundingClientRect();
+    const worldX = ((e.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
+    const worldY = ((e.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
+
+    if (sceneManager.currentScene === 'BASE' && structureManager.isBuilding) {
+      if (structureManager.isOverGhost(worldX, worldY)) {
+        isDraggingBuilding = true;
+        isDragging = false;
+        canvas.style.cursor = 'grabbing';
+      } else {
+        isDragging = true;
+        isDraggingBuilding = false;
         canvas.style.cursor = 'grabbing';
       }
     } else {
-      canvas.style.cursor = 'grabbing';
+      isDragging = true;
+      isDraggingBuilding = false;
+      if (sceneManager.currentScene === 'BASE') {
+        if (!structureManager.isDeconstructing) {
+          canvas.style.cursor = 'grabbing';
+        }
+      } else {
+        canvas.style.cursor = 'grabbing';
+      }
     }
   });
 
   window.addEventListener('mousemove', (e) => {
     const cam = getCurrentCamera();
 
-    if (sceneManager.currentScene === 'BASE') {
+    if (isDraggingBuilding) {
+      const rect = canvas.getBoundingClientRect();
+      const worldX = ((e.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
+      const worldY = ((e.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
+      structureManager.dragGhost(worldX, worldY);
+    } else if (sceneManager.currentScene === 'BASE') {
       structureManager.updateMousePosition(
         e.clientX, e.clientY,
         cam.x, cam.y, cam.zoom,
@@ -135,6 +170,7 @@ function initCamera(canvas) {
 
   window.addEventListener('mouseup', (e) => {
     isDragging = false;
+    isDraggingBuilding = false;
     
     if (sceneManager.currentScene === 'BASE') {
       if (!structureManager.isBuilding && !structureManager.isDeconstructing) {
@@ -159,7 +195,8 @@ function initCamera(canvas) {
 
     if (sceneManager.currentScene === 'BASE') {
       if (structureManager.isBuilding) {
-        structureManager.placeBuilding();
+        // Place building is now triggered by UI button, no longer on click.
+        // We will just do nothing here.
       } else if (structureManager.isDeconstructing) {
         structureManager.deconstructBuilding();
       } else {
@@ -184,7 +221,6 @@ function initCamera(canvas) {
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (e.touches.length === 1) {
-      isDragging = true;
       hasDragged = false;
       const touch = e.touches[0];
       lastMouseX = touch.clientX;
@@ -192,8 +228,27 @@ function initCamera(canvas) {
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       touchStartTime = Date.now();
+
+      const cam = getCurrentCamera();
+      const rect = canvas.getBoundingClientRect();
+      const worldX = ((touch.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
+      const worldY = ((touch.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
+
+      if (sceneManager.currentScene === 'BASE' && structureManager.isBuilding) {
+        if (structureManager.isOverGhost(worldX, worldY)) {
+          isDraggingBuilding = true;
+          isDragging = false;
+        } else {
+          isDragging = true;
+          isDraggingBuilding = false;
+        }
+      } else {
+        isDragging = true;
+        isDraggingBuilding = false;
+      }
     } else if (e.touches.length === 2) {
       isDragging = false;
+      isDraggingBuilding = false;
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       initialPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -210,7 +265,13 @@ function initCamera(canvas) {
     e.preventDefault();
     const cam = getCurrentCamera();
 
-    if (e.touches.length === 1 && isDragging) {
+    if (e.touches.length === 1 && isDraggingBuilding) {
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const worldX = ((touch.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
+      const worldY = ((touch.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
+      structureManager.dragGhost(worldX, worldY);
+    } else if (e.touches.length === 1 && isDragging) {
       hasDragged = true;
       const touch = e.touches[0];
       const dx = touch.clientX - lastMouseX;
@@ -272,9 +333,14 @@ function initCamera(canvas) {
       }
     }
 
+    if (e.touches.length === 0) {
+      isDraggingBuilding = false;
+    }
+
     // If lifting a finger from a pinch, stop tracking
     if (e.touches.length < 2) {
       isDragging = false;
+      isDraggingBuilding = false;
     }
   }, { passive: false });
 
