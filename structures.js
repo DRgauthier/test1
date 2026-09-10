@@ -1,3 +1,5 @@
+const GRID_SIZE = 50;
+
 const BUILDING_TYPES = {
   HEADQUARTERS: { id: 'HEADQUARTERS', name: 'Command Center', width: 150, height: 150, color: '#4299e1', cost: { steel: 200, wood: 200, food: 0, water: 0 }, caps: { worker: 5, soldier: 5, medic: 0 } },
   BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 100, wood: 50, food: 0, water: 0 }, caps: { soldier: 10 } },
@@ -438,9 +440,8 @@ class StructureManager {
 
     if (window.getCameraCenter) {
       const center = window.getCameraCenter();
-      const gridSize = 50;
-      this.ghostX = Math.floor(center.x / gridSize) * gridSize;
-      this.ghostY = Math.floor(center.y / gridSize) * gridSize;
+      this.ghostX = Math.round(center.x / GRID_SIZE) * GRID_SIZE;
+      this.ghostY = Math.round(center.y / GRID_SIZE) * GRID_SIZE;
     } else {
       this.ghostX = 0;
       this.ghostY = 0;

@@ -61,3 +61,17 @@
 127.0.0.1 - - [10/Sep/2026 18:12:21] "GET /camera.js HTTP/1.1" 200 -
 127.0.0.1 - - [10/Sep/2026 18:12:21] "GET /npc.js HTTP/1.1" 200 -
 127.0.0.1 - - [10/Sep/2026 18:12:21] "GET /missions.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /worldMap.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /sceneManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /structures.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /npc.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /missions.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:56:44] "GET /camera.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /sceneManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /worldMap.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /missions.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /camera.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /npc.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Sep/2026 17:58:11] "GET /structures.js HTTP/1.1" 200 -
