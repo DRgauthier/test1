@@ -268,31 +268,70 @@
   <script src="structures.js"></script>
   <script src="npc.js"></script>
   <script src="missions.js"></script>
+  <!-- Authentication UI -->
+  <div id="auth-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;">
+    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center;">
+      <h2 style="margin-top: 0;">Login / Signup</h2>
+      <input type="email" id="auth-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+      <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 20px; box-sizing: border-box; border-radius: 4px; border: 1px solid #718096; background: #2d3748; color: white;" />
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="auth-login-btn" style="padding: 10px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Login</button>
+        <button id="auth-signup-btn" style="padding: 10px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Signup</button>
+      </div>
+      <div id="auth-error" style="color: #fc8181; margin-top: 15px; font-size: 14px;"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseConfig.js"></script>
+  <script src="auth.js"></script>
+
   <script src="camera.js"></script>
   
   <script>
-    // Initialize managers that don't depend on DOM elements directly
-    window.sceneManager = new SceneManager();
-    window.worldMap = new WorldMap();
+    let isInitialized = false;
 
-    const canvas = document.getElementById('myCanvas');
-    initCamera(canvas);
+    // Delay initialization until authentication succeeds
+    window.onAuthSuccess = async function() {
+      if (isInitialized) return;
+      isInitialized = true;
 
-    window.npcManager = new NPCManager(structureManager);
-    window.missionManager = new MissionManager(structureManager, window.npcManager);
-
-    // Give the player 3 free starting workers to make the starter base self-sufficient
-    const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
-    if (hq) {
-      for(let i = 0; i < 3; i++) {
-        const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
-        const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
-        const newWorker = new Worker(spawnX, spawnY);
-        window.npcManager.npcs.push(newWorker);
-        window.npcManager.counts.worker++;
+      // Fetch world seed from Supabase
+      let seed = '12345';
+      if (window.supabaseClient) {
+        const { data, error } = await window.supabaseClient
+          .from('settings')
+          .select('value')
+          .eq('id', 'world_seed')
+          .single();
+        if (data && data.value) {
+          seed = data.value;
+        }
       }
-      window.npcManager.updateUI();
-    }
+
+      // Initialize managers that don't depend on DOM elements directly
+      window.sceneManager = new SceneManager();
+      window.worldMap = new WorldMap(20, 20, seed);
+
+      const canvas = document.getElementById('myCanvas');
+      initCamera(canvas);
+
+      window.npcManager = new NPCManager(structureManager);
+      window.missionManager = new MissionManager(structureManager, window.npcManager);
+
+      // Give the player 3 free starting workers to make the starter base self-sufficient
+      const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
+      if (hq) {
+        for(let i = 0; i < 3; i++) {
+          const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
+          const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
+          const newWorker = new Worker(spawnX, spawnY);
+          window.npcManager.npcs.push(newWorker);
+          window.npcManager.counts.worker++;
+        }
+        window.npcManager.updateUI();
+      }
+    };
 
     function toggleDevMode() {
       const isDev = structureManager.toggleDevMode();
