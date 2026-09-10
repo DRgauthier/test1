@@ -1,11 +1,23 @@
+// Simple seeded PRNG (Mulberry32)
+function mulberry32(a) {
+  return function() {
+    var t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+
 class WorldMap {
-  constructor(cols = 20, rows = 20) {
+  constructor(cols = 20, rows = 20, seed = '12345') {
     this.cols = cols;
     this.rows = rows;
     this.hexRadius = 40;
     this.hexWidth = Math.sqrt(3) * this.hexRadius;
     this.hexHeight = 2 * this.hexRadius;
     this.hexes = [];
+    this.seed = parseInt(seed) || 12345;
+    this.rng = mulberry32(this.seed);
 
     // Some placeholder colors for biomes
     this.colors = ['#2d3748', '#4a5568', '#276749', '#2f855a', '#744210'];
@@ -26,7 +38,7 @@ class WorldMap {
           r: r,
           x: x,
           y: y,
-          color: this.colors[Math.floor(Math.random() * this.colors.length)],
+          color: this.colors[Math.floor(this.rng() * this.colors.length)],
           state: 'EMPTY'
         });
       }
