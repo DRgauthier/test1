@@ -326,11 +326,12 @@ class NPCManager {
 
     const header = document.createElement('div');
     header.style.cssText = 'display: flex; justify-content: space-between; cursor: pointer; font-weight: bold;';
-    header.innerHTML = `<span>Unit Training</span> <span id="npc-toggle">▼</span>`;
+    header.innerHTML = `<span>Unit Training</span> <span id="npc-toggle">▶</span>`;
     
     const content = document.createElement('div');
     content.id = 'npc-content';
     content.style.marginTop = '10px';
+    content.style.display = 'none';
 
     header.onclick = () => {
       if (content.style.display === 'none') {
@@ -338,7 +339,7 @@ class NPCManager {
         document.getElementById('npc-toggle').innerText = '▼';
       } else {
         content.style.display = 'none';
-        document.getElementById('npc-toggle').innerText = '▲';
+        document.getElementById('npc-toggle').innerText = '▶';
       }
     };
 

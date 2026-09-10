@@ -498,8 +498,10 @@ class StructureManager {
   dragGhost(worldX, worldY) {
     if (!this.isBuilding || !this.pendingBuildingType) return;
     const gridSize = 50;
-    this.ghostX = Math.floor(worldX / gridSize) * gridSize;
-    this.ghostY = Math.floor(worldY / gridSize) * gridSize;
+    // Align the center of the dragged building roughly to the cursor to avoid instant jumping
+    // to top-left when dragging larger buildings.
+    this.ghostX = Math.floor((worldX - this.pendingBuildingType.width / 2) / gridSize) * gridSize;
+    this.ghostY = Math.floor((worldY - this.pendingBuildingType.height / 2) / gridSize) * gridSize;
     this.validateGhostPlacement();
   }
 
@@ -532,6 +534,9 @@ class StructureManager {
     this.buildings.push(newBuilding);
     
     this.cancelAction();
+
+    const confirmUI = document.getElementById('build-confirm-ui');
+    if (confirmUI) confirmUI.style.display = 'none';
   }
 
   deconstructBuilding() {
