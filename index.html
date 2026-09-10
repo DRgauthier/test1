@@ -244,9 +244,9 @@
 
   <div id="build-menu-container">
     <div id="build-menu-header" onclick="toggleBuildMenu()">
-      <span>Build Structures</span> <span id="build-toggle">▼</span>
+      <span>Build Structures</span> <span id="build-toggle">▶</span>
     </div>
-    <div id="build-menu-content">
+    <div id="build-menu-content" style="display: none;">
       <button onclick="structureManager.startBuilding('HEADQUARTERS')">HQ (St:200 Wd:200)</button>
       <button onclick="structureManager.startBuilding('BARRACKS')">Barracks (St:100 Wd:50)</button>
       <button onclick="structureManager.startBuilding('GUNSHIP')">Gunship Pad (St:300 Wd:100)</button>
@@ -312,7 +312,7 @@
         toggleIcon.innerText = '▼';
       } else {
         content.style.display = 'none';
-        toggleIcon.innerText = '▲';
+        toggleIcon.innerText = '▶';
       }
     }
   </script>
