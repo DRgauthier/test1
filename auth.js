@@ -54,9 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   supabase.auth.onAuthStateChange((_event, session) => {
+    console.log('[DEBUG] onAuthStateChange event fired:', _event, 'Session exists:', !!session);
     if (session) {
       window.currentUser = session.user;
       authModal.style.display = 'none';
+      console.log('[DEBUG] Calling window.onAuthSuccess()');
       if (window.onAuthSuccess) window.onAuthSuccess();
     } else {
       window.currentUser = null;

@@ -219,6 +219,7 @@ class StructureManager {
 
   async syncPlayerState() {
     if (window.supabaseClient && window.currentUser) {
+      console.log('[DEBUG] syncPlayerState: syncing resources to DB. Steel:', this.resources.steel, 'Oil:', this.resources.oil);
       await window.supabaseClient
         .from('players')
         .update({
@@ -533,8 +534,11 @@ class StructureManager {
         .single();
 
       if (data) {
+        console.log('[DEBUG] placeBuilding: Successfully inserted building into DB:', data);
         newBuilding.dbId = data.id;
         newBuilding.construction_started_at = data.construction_started_at;
+      } else {
+        console.error('[DEBUG] placeBuilding: Failed to insert building into DB. Error:', error);
       }
       this.syncPlayerState();
     }

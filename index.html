@@ -334,15 +334,18 @@
       window.missionManager = new MissionManager(structureManager, window.npcManager);
 
       if (window.supabaseClient && window.currentUser) {
+        console.log('[DEBUG] onAuthSuccess: starting initialization for user', window.currentUser.id);
         window.worldMap.fetchOtherPlayers();
         // Ensure player record exists
         let { data: player, error: playerError } = await window.supabaseClient
           .from('players')
           .select('*')
           .eq('id', window.currentUser.id)
-          .single();
+          .maybeSingle();
 
-        if (!player) {
+        console.log('[DEBUG] Fetched player:', player, 'error:', playerError);
+
+        if (!player && !playerError) {
           // New player: create record with random overworld coords
           const newPlayer = {
             id: window.currentUser.id,
@@ -367,18 +370,22 @@
         structureManager.resources.oil = player.oil || 0;
 
         // Fetch buildings
-        const { data: buildingsData } = await window.supabaseClient
+        const { data: buildingsData, error: buildingsError } = await window.supabaseClient
           .from('buildings')
           .select('*')
           .eq('player_id', window.currentUser.id);
 
+        console.log('[DEBUG] Fetched buildings:', buildingsData, 'error:', buildingsError);
+
         // Fetch workers
-        const { data: workersData } = await window.supabaseClient
+        const { data: workersData, error: workersError } = await window.supabaseClient
           .from('workers')
           .select('*')
           .eq('player_id', window.currentUser.id);
 
-        if ((!buildingsData || buildingsData.length === 0) && (!workersData || workersData.length === 0)) {
+        console.log('[DEBUG] Fetched workers:', workersData, 'error:', workersError);
+
+        if (!buildingsError && !workersError && (!buildingsData || buildingsData.length === 0) && (!workersData || workersData.length === 0)) {
           // Initial base setup
           const hq = new Structure('HEADQUARTERS', -75, -75);
           const { data: hqData } = await window.supabaseClient
