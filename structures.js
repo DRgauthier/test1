@@ -18,6 +18,7 @@ class Structure {
     this.type = BUILDING_TYPES[typeId];
     this.x = x;
     this.y = y;
+    this.level = 1;
     
     this.maxHealth = 100;
     this.health = this.maxHealth;
@@ -212,6 +213,20 @@ class StructureManager {
 
     this.resources = { steel: 500, oil: 500 };
     this.updateResourceUI();
+
+    setInterval(() => this.syncPlayerState(), 15000);
+  }
+
+  async syncPlayerState() {
+    if (window.supabaseClient && window.currentUser) {
+      await window.supabaseClient
+        .from('players')
+        .update({
+          steel: this.resources.steel,
+          oil: this.resources.oil
+        })
+        .eq('id', window.currentUser.id);
+    }
   }
 
   getAOERadius() {
@@ -509,6 +524,7 @@ class StructureManager {
         .insert({
           player_id: window.currentUser.id,
           type_id: newBuilding.type.id,
+          level: newBuilding.level,
           x: newBuilding.x,
           y: newBuilding.y,
           health: newBuilding.health
@@ -520,6 +536,7 @@ class StructureManager {
         newBuilding.dbId = data.id;
         newBuilding.construction_started_at = data.construction_started_at;
       }
+      this.syncPlayerState();
     }
 
     this.cancelAction();
@@ -541,6 +558,7 @@ class StructureManager {
         .from('buildings')
         .delete()
         .eq('id', buildingToRemove.dbId);
+      this.syncPlayerState();
     }
 
     this.hoveredBuilding = null;

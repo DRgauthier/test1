@@ -60,6 +60,25 @@ class Worker extends NPC {
     super(NPC_TYPES.WORKER, x, y);
     this.gatheringResource = null;
     this.gatherTimer = 0;
+    this.assignment = 'idle';
+    this.targetBuildingId = null;
+  }
+
+  setAssignment(newAssignment, newTargetBuildingId) {
+    if (this.assignment !== newAssignment || this.targetBuildingId !== newTargetBuildingId) {
+      this.assignment = newAssignment;
+      this.targetBuildingId = newTargetBuildingId;
+      if (window.supabaseClient && this.dbId) {
+        window.supabaseClient
+          .from('workers')
+          .update({
+            assignment: this.assignment,
+            target_building_id: this.targetBuildingId
+          })
+          .eq('id', this.dbId)
+          .then(() => {}); // fire and forget
+      }
+    }
   }
 
   update() {
@@ -98,10 +117,15 @@ class Worker extends NPC {
         this.state = 'MOVING_TO_SOURCE';
         this.gatheringResource = this.target.type.generates;
 
+        if (this.target.dbId) {
+          this.setAssignment(this.gatheringResource, this.target.dbId);
+        }
+
       } else {
         if (Math.random() < 0.01) {
           this.target = { x: this.x + (Math.random() - 0.5) * 100, y: this.y + (Math.random() - 0.5) * 100 };
           this.state = 'WANDERING';
+          this.setAssignment('idle', null);
         }
       }
     }
@@ -118,6 +142,7 @@ class Worker extends NPC {
       if (!manager.buildings.includes(this.target)) {
         this.state = 'IDLE';
         this.target = null;
+        this.setAssignment('idle', null);
         return;
       }
 
@@ -144,6 +169,7 @@ class Worker extends NPC {
         this.target = manager.getNearestDepot(this.x, this.y);
         if (!this.target) {
           this.state = 'IDLE';
+          this.setAssignment('idle', null);
           return; 
         }
       }
@@ -156,6 +182,7 @@ class Worker extends NPC {
         manager.addResource(this.gatheringResource, 25);
         this.state = 'IDLE';
         this.target = null;
+        this.setAssignment('idle', null);
       }
     }
   }
@@ -492,8 +519,8 @@ class NPCManager {
                 .insert({
                   player_id: window.currentUser.id,
                   type_id: task.typeKey.toUpperCase(),
-                  x: spawnX,
-                  y: spawnY,
+                  assignment: newNPC.assignment || 'idle',
+                  target_building_id: newNPC.targetBuildingId || null,
                   health: newNPC.health
                 })
                 .select()
