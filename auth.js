@@ -82,7 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) errorDiv.innerText = error.message;
     } else if (currentAuthMode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname
+        }
+      });
       if (error) {
         errorDiv.innerText = error.message;
       } else if (data.user && data.session === null) {
