@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS public.players (
     email TEXT,
     hex_x INTEGER, -- overworld Hex X coordinate of the player's base
     hex_y INTEGER, -- overworld Hex Y coordinate of the player's base
+    steel NUMERIC DEFAULT 0,
+    oil NUMERIC DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.buildings (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     player_id UUID REFERENCES public.players(id) ON DELETE CASCADE NOT NULL,
     type_id TEXT NOT NULL,
+    level INTEGER DEFAULT 1,
     x NUMERIC NOT NULL,
     y NUMERIC NOT NULL,
     health NUMERIC NOT NULL,
@@ -38,8 +41,8 @@ CREATE TABLE IF NOT EXISTS public.workers (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     player_id UUID REFERENCES public.players(id) ON DELETE CASCADE NOT NULL,
     type_id TEXT NOT NULL,
-    x NUMERIC NOT NULL,
-    y NUMERIC NOT NULL,
+    assignment TEXT DEFAULT 'idle',
+    target_building_id UUID REFERENCES public.buildings(id) ON DELETE SET NULL,
     health NUMERIC NOT NULL,
     training_started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL

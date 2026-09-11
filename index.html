@@ -348,7 +348,9 @@
             id: window.currentUser.id,
             email: window.currentUser.email,
             hex_x: Math.floor(Math.random() * 20),
-            hex_y: Math.floor(Math.random() * 20)
+            hex_y: Math.floor(Math.random() * 20),
+            steel: 500,
+            oil: 500
           };
           const { data: insertedPlayer, error: insertError } = await window.supabaseClient
             .from('players')
@@ -360,6 +362,9 @@
 
         window.currentUser.hex_x = player.hex_x;
         window.currentUser.hex_y = player.hex_y;
+
+        structureManager.resources.steel = player.steel || 0;
+        structureManager.resources.oil = player.oil || 0;
 
         // Fetch buildings
         const { data: buildingsData } = await window.supabaseClient
@@ -381,6 +386,7 @@
             .insert({
               player_id: window.currentUser.id,
               type_id: hq.type.id,
+              level: hq.level,
               x: hq.x,
               y: hq.y,
               health: hq.health
@@ -394,34 +400,32 @@
           }
           structureManager.buildings = [hq];
 
-          const spawnPoints = [];
           for(let i = 0; i < 3; i++) {
-            const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
-            const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
-            spawnPoints.push({ x: spawnX, y: spawnY });
-          }
-
-          for (const sp of spawnPoints) {
             const { data: workerData } = await window.supabaseClient
               .from('workers')
               .insert({
                 player_id: window.currentUser.id,
                 type_id: 'WORKER',
-                x: sp.x,
-                y: sp.y,
+                assignment: 'idle',
                 health: 50
               })
               .select()
               .single();
 
-            const newWorker = new NPC(NPC_TYPES.WORKER, sp.x, sp.y);
+            const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
+            const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20);
+            const newWorker = new Worker(spawnX, spawnY);
             if (workerData) {
               newWorker.dbId = workerData.id;
               newWorker.training_started_at = workerData.training_started_at;
+              newWorker.assignment = workerData.assignment;
+              newWorker.targetBuildingId = workerData.target_building_id;
             }
             window.npcManager.npcs.push(newWorker);
             window.npcManager.counts.worker++;
           }
+
+          structureManager.syncPlayerState();
         } else {
           // Load existing base
           structureManager.buildings = [];
@@ -429,6 +433,7 @@
             buildingsData.forEach(bData => {
               const b = new Structure(bData.type_id, bData.x, bData.y);
               b.dbId = bData.id;
+              b.level = bData.level;
               b.health = bData.health;
               b.construction_started_at = bData.construction_started_at;
               structureManager.buildings.push(b);
@@ -438,14 +443,32 @@
           window.npcManager.npcs = [];
           window.npcManager.counts = { worker: 0, soldier: 0, medic: 0 };
           if (workersData) {
+            const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
+            let hqCenterX = 0;
+            let hqCenterY = 0;
+            if (hq) {
+              hqCenterX = hq.x + hq.type.width / 2;
+              hqCenterY = hq.y + hq.type.height + 20;
+            }
+
             workersData.forEach(wData => {
               const typeKey = wData.type_id.toUpperCase();
-              const typeObj = NPC_TYPES[typeKey];
-              if (typeObj) {
-                const w = new NPC(typeObj, wData.x, wData.y);
+              let w;
+              const spawnX = hqCenterX + (Math.random() * 40 - 20);
+              const spawnY = hqCenterY + (Math.random() * 20);
+
+              if (typeKey === 'WORKER') w = new Worker(spawnX, spawnY);
+              else if (typeKey === 'SOLDIER') w = new Soldier(spawnX, spawnY);
+              else if (typeKey === 'MEDIC') w = new Medic(spawnX, spawnY);
+
+              if (w) {
                 w.dbId = wData.id;
                 w.health = wData.health;
                 w.training_started_at = wData.training_started_at;
+                if (typeKey === 'WORKER') {
+                  w.assignment = wData.assignment;
+                  w.targetBuildingId = wData.target_building_id;
+                }
                 window.npcManager.npcs.push(w);
                 window.npcManager.counts[typeKey.toLowerCase()]++;
               }
@@ -457,6 +480,12 @@
         window.npcManager.updateUI();
       }
     };
+
+    window.addEventListener('beforeunload', () => {
+      if (window.structureManager) {
+        window.structureManager.syncPlayerState();
+      }
+    });
 
     function toggleDevMode() {
       const isDev = structureManager.toggleDevMode();
