@@ -166,14 +166,69 @@
     #build-cancel-btn {
       background-color: #f56565; /* Red */
     }
+
+    #db-diagnostic-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+
+    #db-diagnostic-content {
+      background: #1a202c;
+      padding: 30px;
+      border-radius: 8px;
+      border: 1px solid #4a5568;
+      width: 600px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    #db-diagnostic-content h2 {
+      margin-top: 0;
+      color: #fc8181;
+    }
+
+    #close-diagnostic-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #4a5568;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
+
+  <div id="db-diagnostic-modal">
+    <div id="db-diagnostic-content">
+      <h2>Database Diagnostics</h2>
+      <div id="db-diagnostic-log"></div>
+      <button id="close-diagnostic-btn" onclick="document.getElementById('db-diagnostic-modal').style.display='none'">Close</button>
+    </div>
+  </div>
 
   <div id="top-bar">
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
       <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
+      <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">DB Diagnostics</button>
       <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
     </div>
   </div>
@@ -311,6 +366,16 @@
       if (isInitialized) return;
       isInitialized = true;
 
+      const logDiagnostic = (msg) => {
+        const logDiv = document.getElementById('db-diagnostic-log');
+        if (logDiv) logDiv.innerHTML += msg + '<br><br>';
+        console.log('[Diagnostic]', msg);
+      };
+
+      logDiagnostic(`Starting Auth Success Flow for user: ${window.currentUser ? window.currentUser.id : 'unknown'}`);
+
+      let hasDbErrors = false;
+
       // Fetch world seed from Supabase
       let seed = '12345';
       if (window.supabaseClient) {
@@ -318,9 +383,16 @@
           .from('settings')
           .select('value')
           .eq('id', 'world_seed')
-          .single();
-        if (data && data.value) {
+          .maybeSingle();
+
+        if (error) {
+          logDiagnostic(`<span style="color:red">Error fetching settings table:</span> ${JSON.stringify(error)}`);
+          hasDbErrors = true;
+        } else if (data && data.value) {
           seed = data.value;
+          logDiagnostic('Successfully fetched world seed from settings.');
+        } else {
+          logDiagnostic('Settings table read succeeded but world_seed not found. Using default.');
         }
       }
 
@@ -345,9 +417,16 @@
 
         console.log('[DEBUG] Fetched player:', player, 'error:', playerError);
 
+        if (playerError) {
+          logDiagnostic(`<span style="color:red">Error fetching players table:</span> ${JSON.stringify(playerError)}`);
+          hasDbErrors = true;
+        } else {
+          logDiagnostic('Successfully fetched players data.');
+        }
+
         let isNewPlayer = false;
 
-        if (!player && !playerError) {
+        if (!player && !playerError && !hasDbErrors) {
           isNewPlayer = true;
           // New player: create record with random overworld coords
           const newPlayer = {
@@ -366,11 +445,13 @@
           player = insertedPlayer || newPlayer;
         }
 
-        window.currentUser.hex_x = player.hex_x;
-        window.currentUser.hex_y = player.hex_y;
+        if (player) {
+          window.currentUser.hex_x = player.hex_x;
+          window.currentUser.hex_y = player.hex_y;
 
-        structureManager.resources.steel = player.steel || 0;
-        structureManager.resources.oil = player.oil || 0;
+          structureManager.resources.steel = player.steel || 0;
+          structureManager.resources.oil = player.oil || 0;
+        }
 
         // Fetch buildings
         const { data: buildingsData, error: buildingsError } = await window.supabaseClient
@@ -379,6 +460,12 @@
           .eq('player_id', window.currentUser.id);
 
         console.log('[DEBUG] Fetched buildings:', buildingsData, 'error:', buildingsError);
+        if (buildingsError) {
+          logDiagnostic(`<span style="color:red">Error fetching buildings table:</span> ${JSON.stringify(buildingsError)}`);
+          hasDbErrors = true;
+        } else {
+          logDiagnostic('Successfully fetched buildings data.');
+        }
 
         // Fetch workers
         const { data: workersData, error: workersError } = await window.supabaseClient
@@ -387,6 +474,18 @@
           .eq('player_id', window.currentUser.id);
 
         console.log('[DEBUG] Fetched workers:', workersData, 'error:', workersError);
+        if (workersError) {
+          logDiagnostic(`<span style="color:red">Error fetching workers table:</span> ${JSON.stringify(workersError)}`);
+          hasDbErrors = true;
+        } else {
+          logDiagnostic('Successfully fetched workers data.');
+        }
+
+        if (hasDbErrors) {
+           logDiagnostic('<span style="color:red"><b>Aborting game initialization due to database errors. Please run schema.sql in Supabase.</b></span>');
+           document.getElementById('db-diagnostic-modal').style.display='flex';
+           return;
+        }
 
         // Only generate the initial base layout if this is truly a brand-new player who just registered
         if (isNewPlayer && !buildingsError && !workersError) {
