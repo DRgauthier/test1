@@ -57,7 +57,8 @@ ALTER TABLE public.workers ENABLE ROW LEVEL SECURITY;
 -- 3. Create RLS Policies
 
 -- Settings: Anyone can read, no one can write via client
-CREATE POLICY "Enable read access for all users" ON public.settings FOR SELECT USING (true);
+-- Settings: Authenticated users can read, no one can write via client
+CREATE POLICY "Enable read access for authenticated users" ON public.settings FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Players: Authenticated users can read, users can only update their own record
 CREATE POLICY "Enable read access for authenticated users" ON public.players FOR SELECT USING (auth.role() = 'authenticated');
