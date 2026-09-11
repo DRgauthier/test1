@@ -436,7 +436,7 @@
           window.npcManager.counts.worker++;
 
           structureManager.syncPlayerState();
-        } else {
+        } else if (!buildingsError && !workersError) {
           // Load existing base
           structureManager.buildings = [];
           if (buildingsData) {
