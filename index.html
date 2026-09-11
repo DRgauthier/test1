@@ -345,7 +345,10 @@
 
         console.log('[DEBUG] Fetched player:', player, 'error:', playerError);
 
+        let isNewPlayer = false;
+
         if (!player && !playerError) {
+          isNewPlayer = true;
           // New player: create record with random overworld coords
           const newPlayer = {
             id: window.currentUser.id,
@@ -385,11 +388,8 @@
 
         console.log('[DEBUG] Fetched workers:', workersData, 'error:', workersError);
 
-        // Only consider it a fresh start if there was NO error fetching the data, AND the data is genuinely empty.
-        // If there was an error (e.g. PGRST205 - schema cache issue), we should not overwrite everything.
-        const isFreshStart = !buildingsError && !workersError && (!buildingsData || buildingsData.length === 0) && (!workersData || workersData.length === 0);
-
-        if (isFreshStart) {
+        // Only generate the initial base layout if this is truly a brand-new player who just registered
+        if (isNewPlayer && !buildingsError && !workersError) {
           // Initial base setup
           const hq = new Structure('HEADQUARTERS', -75, -75);
           const { data: hqData } = await window.supabaseClient
