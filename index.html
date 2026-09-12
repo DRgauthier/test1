@@ -216,6 +216,60 @@
 </head>
 <body>
 
+  <!-- Main Menu Modal -->
+  <div id="main-menu-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.9); z-index: 9900; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;">
+    <div style="background: #1a202c; padding: 40px; border-radius: 8px; border: 1px solid #4a5568; width: 300px; text-align: center; position: relative;">
+      <h2 style="margin-top: 0;">Game Menu</h2>
+      <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+        <button onclick="document.getElementById('player-wiki-modal').style.display='flex'" style="padding: 12px 20px; background: #4299e1; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Player Wiki</button>
+        <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="padding: 12px 20px; background: #ecc94b; color: #1a202c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">DB Diagnostics</button>
+        <button id="dev-btn" onclick="toggleDevMode()" style="padding: 12px 20px; background: #2d3748; color: white; border: 1px solid #718096; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Dev Mode: OFF</button>
+        <button onclick="document.getElementById('main-menu-modal').style.display='none'" style="margin-top: 10px; padding: 12px 20px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Close Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Player Wiki Modal -->
+  <div id="player-wiki-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.95); z-index: 9950; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;">
+    <div style="background: #1a202c; padding: 30px; border-radius: 8px; border: 1px solid #4a5568; width: 700px; max-width: 90vw; max-height: 85vh; overflow-y: auto; line-height: 1.6;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4a5568; padding-bottom: 10px; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #4299e1;">Player Wiki: Base Operations Guide</h2>
+        <button onclick="document.getElementById('player-wiki-modal').style.display='none'" style="background: #e53e3e; border: none; color: white; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Close X</button>
+      </div>
+
+      <h3 style="color: #ecc94b; margin-top: 0;">1. Core Mechanics</h3>
+      <p><b>Builders:</b> Construction requires builders. Your total builder capacity is determined by your <b>Headquarters (HQ)</b> and any <b>Worker Huts</b> you build. If a building is currently under construction, it occupies a builder.</p>
+      <p><b>Resources:</b> Your base relies on two main resources:</p>
+      <ul>
+        <li><b>Steel:</b> Used for basic construction. Generated passively by <b>Steel Mines</b>.</li>
+        <li><b>Oil:</b> Used for advanced structures and unit management. Generated passively by <b>Oil Pumps</b>.</li>
+      </ul>
+
+      <h3 style="color: #ecc94b;">2. Structures</h3>
+      <ul style="list-style-type: square;">
+        <li><b>Headquarters (HQ):</b> The heart of your base. Generates initial builders and determines your maximum expansion potential.</li>
+        <li><b>Worker Hut:</b> Provides additional builders, allowing you to construct multiple buildings simultaneously.</li>
+        <li><b>Steel Mine & Oil Pump:</b> Passive resource generators. Upgrade them to increase output rate.</li>
+        <li><b>Supply Depot:</b> Increases your total resource storage capacity.</li>
+      </ul>
+
+      <h3 style="color: #ecc94b;">3. Military & Defense</h3>
+      <ul style="list-style-type: square;">
+        <li><b>Barracks:</b> Allows you to train Soldiers. Vital for overworld map expansion and defense.</li>
+        <li><b>Medic Station:</b> Allows you to train Medics, who support your Soldiers during combat missions.</li>
+        <li><b>Gunship Pad:</b> Required to deploy troops across the World Map rapidly.</li>
+        <li><b>Defense Turret:</b> Automatically targets and damages incoming threats to your base. Placing them strategically protects vital resource nodes.</li>
+      </ul>
+
+      <h3 style="color: #ecc94b;">4. Building & Deconstructing</h3>
+      <p>Use the <b>Build Structures</b> menu in the bottom left to select a building. Valid placements will show in green, invalid in red. After placing, click the green checkmark (✓) to confirm. If you make a mistake, you can use the <b>Deconstruct</b> option in the build menu to remove a structure and receive a 75% refund of its cost.</p>
+
+      <div style="margin-top: 30px; text-align: center;">
+        <button onclick="document.getElementById('player-wiki-modal').style.display='none'" style="padding: 10px 30px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Return to Menu</button>
+      </div>
+    </div>
+  </div>
+
   <div id="db-diagnostic-modal">
     <div id="db-diagnostic-content">
       <h2>Database Diagnostics</h2>
@@ -228,8 +282,7 @@
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
       <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
-      <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">DB Diagnostics</button>
-      <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
+      <button onclick="document.getElementById('main-menu-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Menu</button>
     </div>
   </div>
 
@@ -546,8 +599,10 @@
     function toggleDevMode() {
       const isDev = structureManager.toggleDevMode();
       const btn = document.getElementById('dev-btn');
-      btn.innerText = `Dev Mode: ${isDev ? 'ON' : 'OFF'}`;
-      btn.style.backgroundColor = isDev ? '#48bb78' : '#2d3748';
+      if (btn) {
+        btn.innerText = `Dev Mode: ${isDev ? 'ON' : 'OFF'}`;
+        btn.style.backgroundColor = isDev ? '#48bb78' : '#2d3748';
+      }
     }
 
     function toggleBuildMenu() {
