@@ -21,6 +21,10 @@ class SceneManager {
       if (npcMenu) {
         npcMenu.style.display = 'none';
       }
+      const upgradeMenu = document.getElementById('upgrade-menu');
+      if (upgradeMenu) {
+        upgradeMenu.style.display = 'none';
+      }
     } else {
       this.currentScene = 'BASE';
       // Show base building UI

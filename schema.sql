@@ -37,22 +37,10 @@ CREATE TABLE IF NOT EXISTS public.buildings (
 );
 
 -- Workers/NPCs table
-CREATE TABLE IF NOT EXISTS public.workers (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    player_id UUID REFERENCES public.players(id) ON DELETE CASCADE NOT NULL,
-    type_id TEXT NOT NULL,
-    assignment TEXT DEFAULT 'idle',
-    target_building_id UUID REFERENCES public.buildings(id) ON DELETE SET NULL,
-    health NUMERIC NOT NULL,
-    training_started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.buildings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.workers ENABLE ROW LEVEL SECURITY;
 
 -- 3. Create RLS Policies
 
@@ -70,9 +58,3 @@ CREATE POLICY "Enable read access for authenticated users" ON public.buildings F
 CREATE POLICY "Enable insert for authenticated users only" ON public.buildings FOR INSERT WITH CHECK (auth.uid() = player_id);
 CREATE POLICY "Enable update for users based on user_id" ON public.buildings FOR UPDATE USING (auth.uid() = player_id);
 CREATE POLICY "Enable delete for users based on user_id" ON public.buildings FOR DELETE USING (auth.uid() = player_id);
-
--- Workers: Authenticated users can read, users can only insert/update/delete their own workers
-CREATE POLICY "Enable read access for authenticated users" ON public.workers FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Enable insert for authenticated users only" ON public.workers FOR INSERT WITH CHECK (auth.uid() = player_id);
-CREATE POLICY "Enable update for users based on user_id" ON public.workers FOR UPDATE USING (auth.uid() = player_id);
-CREATE POLICY "Enable delete for users based on user_id" ON public.workers FOR DELETE USING (auth.uid() = player_id);
