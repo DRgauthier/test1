@@ -227,11 +227,17 @@
   <div id="top-bar">
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
-      <div>
-        <button onclick="document.getElementById('wiki-modal').style.display='flex'" style="background: #ed8936; color: white; border: 1px solid #dd6b20; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">Wiki / Tips</button>
-        <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
-        <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">DB Diagnostics</button>
-        <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
+      <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+        <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">View World Map</button>
+
+        <div style="position: relative;">
+          <button onclick="toggleSystemMenu()" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Menu ▼</button>
+          <div id="system-menu-dropdown" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 5px; background: rgba(26, 32, 44, 0.95); border: 1px solid #4a5568; border-radius: 4px; padding: 10px; min-width: 150px; flex-direction: column; gap: 10px; z-index: 100;">
+            <button onclick="document.getElementById('wiki-modal').style.display='flex'; toggleSystemMenu();" style="width: 100%; background: #ed8936; color: white; border: 1px solid #dd6b20; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; text-align: left;">Wiki / Tips</button>
+            <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'; toggleSystemMenu();" style="width: 100%; background: #4a5568; color: white; border: 1px solid #718096; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; text-align: left;">DB Diagnostics</button>
+            <button id="dev-btn" onclick="toggleDevMode(); toggleSystemMenu();" style="width: 100%; background: #4a5568; color: white; border: 1px solid #718096; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; text-align: left;">Dev Mode: OFF</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -582,6 +588,15 @@
       const btn = document.getElementById('dev-btn');
       btn.innerText = `Dev Mode: ${isDev ? 'ON' : 'OFF'}`;
       btn.style.backgroundColor = isDev ? '#48bb78' : '#2d3748';
+    }
+
+    function toggleSystemMenu() {
+      const dropdown = document.getElementById('system-menu-dropdown');
+      if (dropdown.style.display === 'none') {
+        dropdown.style.display = 'flex';
+      } else {
+        dropdown.style.display = 'none';
+      }
     }
 
     function toggleBuildMenu() {
