@@ -1,5 +1,4 @@
 const NPC_TYPES = {
-  WORKER: { id: 'WORKER', name: 'Worker', cost: { steel: 50, oil: 20 }, health: 50, speed: 0.8, color: '#ed8936', size: 10, buildTime: 300, reqBuilding: 'WORKER_HUT' },
   SOLDIER: { id: 'SOLDIER', name: 'Soldier', cost: { steel: 100, oil: 20 }, health: 150, speed: 1.2, color: '#e53e3e', size: 12, buildTime: 400, reqBuilding: 'BARRACKS' },
   MEDIC: { id: 'MEDIC', name: 'Medic', cost: { steel: 50, oil: 50 }, health: 80, speed: 1.0, color: '#fc8181', size: 10, buildTime: 400, reqBuilding: 'MEDIC_STATION' }
 };
@@ -52,139 +51,6 @@ class NPC {
 
   update() {
     // Override in subclasses
-  }
-}
-
-class Worker extends NPC {
-  constructor(x, y) {
-    super(NPC_TYPES.WORKER, x, y);
-    this.gatheringResource = null;
-    this.gatherTimer = 0;
-    this.assignment = 'idle';
-    this.targetBuildingId = null;
-  }
-
-  setAssignment(newAssignment, newTargetBuildingId) {
-    if (this.assignment !== newAssignment || this.targetBuildingId !== newTargetBuildingId) {
-      this.assignment = newAssignment;
-      this.targetBuildingId = newTargetBuildingId;
-      if (window.supabaseClient && this.dbId) {
-        window.supabaseClient
-          .from('workers')
-          .update({
-            assignment: this.assignment,
-            target_building_id: this.targetBuildingId
-          })
-          .eq('id', this.dbId)
-          .then(() => {}); // fire and forget
-      }
-    }
-  }
-
-  update() {
-    const manager = window.structureManager;
-    
-    if (this.state === 'IDLE') {
-      const resBuildings = manager.buildings.filter(b => b.type.generates);
-      
-      if (resBuildings.length > 0) {
-        const maxCap = manager.getMaxCapacity();
-        let totalWeight = 0;
-        
-        const weightedBuildings = resBuildings.map(b => {
-          const resType = b.type.generates;
-          const currentStock = manager.resources[resType] || 0;
-          const weight = Math.max(1, maxCap - currentStock);
-          totalWeight += weight;
-          return { building: b, weight: weight };
-        });
-
-        let randomPick = Math.random() * totalWeight;
-        let cumulativeWeight = 0;
-        
-        for (const item of weightedBuildings) {
-          cumulativeWeight += item.weight;
-          if (randomPick <= cumulativeWeight) {
-            this.target = item.building;
-            break;
-          }
-        }
-
-        if (!this.target) {
-          this.target = resBuildings[resBuildings.length - 1];
-        }
-
-        this.state = 'MOVING_TO_SOURCE';
-        this.gatheringResource = this.target.type.generates;
-
-        if (this.target.dbId) {
-          this.setAssignment(this.gatheringResource, this.target.dbId);
-        }
-
-      } else {
-        if (Math.random() < 0.01) {
-          this.target = { x: this.x + (Math.random() - 0.5) * 100, y: this.y + (Math.random() - 0.5) * 100 };
-          this.state = 'WANDERING';
-          this.setAssignment('idle', null);
-        }
-      }
-    }
-
-    if (this.state === 'WANDERING' && this.target) {
-      const dist = this.moveTowards(this.target.x, this.target.y);
-      if (dist <= this.type.speed) {
-        this.state = 'IDLE';
-        this.target = null;
-      }
-    }
-
-    if (this.state === 'MOVING_TO_SOURCE' && this.target) {
-      if (!manager.buildings.includes(this.target)) {
-        this.state = 'IDLE';
-        this.target = null;
-        this.setAssignment('idle', null);
-        return;
-      }
-
-      const tx = this.target.x + this.target.type.width / 2;
-      const ty = this.target.y + this.target.type.height / 2;
-      const dist = this.moveTowards(tx, ty);
-
-      if (dist <= this.type.speed) {
-        this.state = 'GATHERING';
-        this.gatherTimer = 120; 
-      }
-    }
-
-    if (this.state === 'GATHERING') {
-      this.gatherTimer--;
-      if (this.gatherTimer <= 0) {
-        this.state = 'MOVING_TO_DEPOT';
-        this.target = manager.getNearestDepot(this.x, this.y);
-      }
-    }
-
-    if (this.state === 'MOVING_TO_DEPOT') {
-      if (!this.target || !manager.buildings.includes(this.target)) {
-        this.target = manager.getNearestDepot(this.x, this.y);
-        if (!this.target) {
-          this.state = 'IDLE';
-          this.setAssignment('idle', null);
-          return; 
-        }
-      }
-
-      const tx = this.target.x + this.target.type.width / 2;
-      const ty = this.target.y + this.target.type.height / 2;
-      const dist = this.moveTowards(tx, ty);
-
-      if (dist <= this.type.speed) {
-        manager.addResource(this.gatheringResource, 25);
-        this.state = 'IDLE';
-        this.target = null;
-        this.setAssignment('idle', null);
-      }
-    }
   }
 }
 
@@ -337,7 +203,7 @@ class NPCManager {
     this.structureManager = structureManager;
     this.npcs = [];
     this.trainingQueue = []; 
-    this.counts = { worker: 0, soldier: 0, medic: 0 };
+    this.counts = { soldier: 0, medic: 0 };
     this.initUI();
   }
 
@@ -391,7 +257,7 @@ class NPCManager {
     const caps = this.structureManager.getCapacities();
 
     if (content.children.length === 0) {
-      ['worker', 'soldier', 'medic'].forEach(typeKey => {
+      ['soldier', 'medic'].forEach(typeKey => {
         const typeObj = NPC_TYPES[typeKey.toUpperCase()];
         
         const row = document.createElement('div');
@@ -417,7 +283,7 @@ class NPCManager {
       });
     }
 
-    ['worker', 'soldier', 'medic'].forEach(typeKey => {
+    ['soldier', 'medic'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
       const count = this.counts[typeKey];
       const cap = caps[typeKey] || 0;
@@ -505,33 +371,15 @@ class NPCManager {
           const spawnY = task.building.y + task.building.type.height + 15;
           
           let newNPC;
-          if (task.typeKey === 'worker') newNPC = new Worker(spawnX, spawnY);
-          else if (task.typeKey === 'soldier') newNPC = new Soldier(spawnX, spawnY);
+          if (task.typeKey === 'soldier') newNPC = new Soldier(spawnX, spawnY);
           else if (task.typeKey === 'medic') newNPC = new Medic(spawnX, spawnY);
 
           if (newNPC) {
             this.npcs.push(newNPC);
             this.counts[task.typeKey]++;
 
-            if (window.supabaseClient && window.currentUser) {
-              window.supabaseClient
-                .from('workers')
-                .insert({
-                  player_id: window.currentUser.id,
-                  type_id: task.typeKey.toUpperCase(),
-                  assignment: newNPC.assignment || 'idle',
-                  target_building_id: newNPC.targetBuildingId || null,
-                  health: newNPC.health
-                })
-                .select()
-                .single()
-                .then(({ data, error }) => {
-                  if (data) {
-                    newNPC.dbId = data.id;
-                    newNPC.training_started_at = data.training_started_at;
-                  }
-                });
-            }
+            // For soldiers and medics, we no longer store them in supabase workers table as requested
+            // (workers table has been removed)
           }
           
           this.trainingQueue.splice(i, 1);
@@ -547,15 +395,6 @@ class NPCManager {
 
         if (npc.health <= 0) {
           this.counts[npc.type.id.toLowerCase()]--;
-
-          if (window.supabaseClient && npc.dbId) {
-            window.supabaseClient
-              .from('workers')
-              .delete()
-              .eq('id', npc.dbId)
-              .then(() => {});
-          }
-
           this.npcs.splice(i, 1);
           uiNeedsUpdate = true; 
         }

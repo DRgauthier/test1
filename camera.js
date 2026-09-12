@@ -207,6 +207,9 @@ function initCamera(canvas) {
             // Check if the user clicked the Gunship to open the menu
             if (b.type.id === 'GUNSHIP' && window.missionManager) {
               window.missionManager.openMenu();
+            } else {
+              // Open upgrade menu for standard buildings
+              structureManager.openUpgradeMenu(b);
             }
             break;
           }

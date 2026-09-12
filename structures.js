@@ -6,12 +6,18 @@ const BUILDING_TYPES = {
   SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 100, oil: 0 } },
   GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 } },
   TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, oil: 0 } },
-  WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 70, oil: 0 }, caps: { worker: 8 } },
+  WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 70, oil: 0 }, caps: {} }, // caps: { worker: 8 } replaced by global builder mechanic
   MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 100, oil: 50 }, caps: { medic: 5 } },
   
-  STEEL_MINE: { id: 'STEEL_MINE', name: 'Steel Mine', width: 60, height: 60, color: '#a0aec0', cost: { steel: 70, oil: 0 }, generates: 'steel' },
-  OIL_PUMP: { id: 'OIL_PUMP', name: 'Oil Pump', width: 50, height: 50, color: '#63b3ed', cost: { steel: 50, oil: 0 }, generates: 'oil' }
+  STEEL_MINE: { id: 'STEEL_MINE', name: 'Steel Mine', width: 60, height: 60, color: '#a0aec0', cost: { steel: 70, oil: 0 }, generates: 'steel', baseTime: 10 },
+  OIL_PUMP: { id: 'OIL_PUMP', name: 'Oil Pump', width: 50, height: 50, color: '#63b3ed', cost: { steel: 50, oil: 0 }, generates: 'oil', baseTime: 10 }
 };
+
+// Add baseTime to all building types
+for (const key in BUILDING_TYPES) {
+  if (!BUILDING_TYPES[key].baseTime) BUILDING_TYPES[key].baseTime = 15; // default 15s
+}
+BUILDING_TYPES.HEADQUARTERS.baseTime = 30;
 
 class Structure {
   constructor(typeId, x, y) {
@@ -253,7 +259,13 @@ class StructureManager {
   update(npcCount) {
     this.tick++;
 
+    // Resource generation loop every 60 ticks (~1 second)
     if (this.tick % 60 === 0) {
+      for (const b of this.buildings) {
+        if (b.type.generates && !this.isBuildingUnderConstruction(b)) {
+          this.addResource(b.type.generates, 2, b);
+        }
+      }
       this.updateResourceUI();
     }
 
@@ -302,9 +314,15 @@ class StructureManager {
     }
   }
 
-  addResource(type, amount) {
+  addResource(type, amount, building = null) {
     const max = this.getMaxCapacity();
-    const actualGain = Math.min(max - (this.resources[type] || 0), amount);
+    let finalAmount = amount;
+
+    if (building && building.level) {
+      finalAmount *= Math.pow(1.5, building.level - 1);
+    }
+
+    const actualGain = Math.min(max - (this.resources[type] || 0), finalAmount);
     
     this.resources[type] += actualGain;
 
@@ -333,15 +351,97 @@ class StructureManager {
   }
 
   getCapacities() {
-    let caps = { worker: 0, soldier: 0, medic: 0 };
+    let caps = { soldier: 0, medic: 0 };
     for (const b of this.buildings) {
-      if (b.type.caps) {
-        if (b.type.caps.worker) caps.worker += b.type.caps.worker;
+      if (b.type.caps && !this.isBuildingUnderConstruction(b)) {
         if (b.type.caps.soldier) caps.soldier += b.type.caps.soldier;
         if (b.type.caps.medic) caps.medic += b.type.caps.medic;
       }
     }
     return caps;
+  }
+
+  getTotalBuilders() {
+    let count = 1; // 1 base from HQ
+    for (const b of this.buildings) {
+      if (b.type.id === 'WORKER_HUT' && !this.isBuildingUnderConstruction(b)) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  getBusyBuilders() {
+    let count = 0;
+    for (const b of this.buildings) {
+      if (this.isBuildingUnderConstruction(b)) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  getAvailableBuilders() {
+    return this.getTotalBuilders() - this.getBusyBuilders();
+  }
+
+  isBuildingUnderConstruction(building) {
+    if (!building.construction_started_at) return false;
+
+    // For now we assume base construction/upgrade time based on type and level
+    // We'll define standard timers in the next step, for now just use a placeholder 30s
+    // Real implementation will calculate exact time difference from construction_started_at
+    const timerStr = building.construction_started_at;
+    const startTime = new Date(timerStr).getTime();
+    const now = Date.now();
+
+    const timeMs = this.getConstructionTimeMs(building);
+
+    if (now - startTime < timeMs) {
+      return true;
+    }
+
+    return false;
+  }
+
+  getConstructionTimeMs(building) {
+    if (building.type.id === 'HEADQUARTERS') {
+      const times = [0, 30, 120, 600, 1800]; // L1 to L5 times in seconds (L1 is instantly built at start, so L2 is index 1 = 30s)
+      const targetLevel = building.level;
+      if (targetLevel > 1 && targetLevel <= times.length) {
+        return times[targetLevel - 1] * 1000;
+      }
+      return 30 * 1000; // default 30s for HQ if something goes wrong
+    }
+
+    // For other buildings: baseTime * (2^(level-1))
+    // Example: L1 -> baseTime. L2 -> baseTime * 2. L3 -> baseTime * 4.
+    const multiplier = Math.pow(2, building.level - 1);
+    return building.type.baseTime * multiplier * 1000;
+  }
+
+  getUpgradeCost(building) {
+    if (building.type.id === 'HEADQUARTERS') {
+      const hqCosts = [
+        { steel: 400, oil: 0 },      // Base (L1)
+        { steel: 1000, oil: 200 },   // to L2
+        { steel: 3000, oil: 800 },   // to L3
+        { steel: 8000, oil: 2500 },  // to L4
+        { steel: 20000, oil: 8000 }  // to L5
+      ];
+      if (building.level < hqCosts.length) {
+        return hqCosts[building.level];
+      }
+      return { steel: Infinity, oil: Infinity }; // Max level reached
+    }
+
+    const cost = { ...building.type.cost };
+    const multiplier = Math.pow(2, building.level); // L1->L2 = 2x base. L2->L3 = 4x base.
+
+    for (const key in cost) {
+      cost[key] *= multiplier;
+    }
+    return cost;
   }
 
   updateResourceUI() {
@@ -360,8 +460,11 @@ class StructureManager {
       const stSign = netSt >= 0 ? '+' : '';
       const oilSign = netOil >= 0 ? '+' : '';
 
+      const totalBuilders = this.getTotalBuilders();
+      const availBuilders = this.getAvailableBuilders();
+
       display.innerHTML = `
-        <div>Steel: ${st} | Oil: ${oil} | Cap: ${cap}</div>
+        <div>Steel: ${st} | Oil: ${oil} | Cap: ${cap} | Builders: ${availBuilders}/${totalBuilders}</div>
         <div style="font-size: 13px; font-weight: normal; color: #cbd5e0; margin-top: 4px;">
           Past 10s Rate &raquo;
           <span style="color: ${stColor}">Steel: ${stSign}${netSt}</span> |
@@ -386,6 +489,7 @@ class StructureManager {
     );
 
     const canAfford = this.canAfford(this.pendingBuildingType.cost);
+    const hasBuilder = this.getAvailableBuilders() > 0;
 
     let isWithinAOE = false;
     const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
@@ -408,13 +512,143 @@ class StructureManager {
       isWithinAOE = true;
     }
 
-    this.isValidPlacement = !hasCollision && canAfford && isWithinAOE;
+    this.isValidPlacement = !hasCollision && canAfford && isWithinAOE && hasBuilder;
 
     // Update UI
     const confirmBtn = document.getElementById('build-confirm-btn');
     if (confirmBtn) {
       confirmBtn.disabled = !this.isValidPlacement;
+
+      // Update text to indicate missing builder if needed
+      if (!hasBuilder && !hasCollision && canAfford && isWithinAOE) {
+        confirmBtn.innerText = "No Builders available";
+      } else if (!this.isValidPlacement) {
+        confirmBtn.innerText = "Cannot build here";
+      } else {
+        confirmBtn.innerText = "Confirm Placement";
+      }
     }
+  }
+
+  async upgradeBuilding() {
+    if (!this.selectedBuilding) return;
+    const building = this.selectedBuilding;
+
+    // Validate again just to be safe
+    if (this.isBuildingUnderConstruction(building)) return;
+    if (this.getAvailableBuilders() <= 0) return;
+
+    const cost = this.getUpgradeCost(building);
+    if (!this.canAfford(cost)) return;
+
+    // HQ bottleneck check
+    if (building.type.id !== 'HEADQUARTERS') {
+      const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
+      const hqLevel = hq ? hq.level : 0;
+      if (hqLevel < building.level + 1) {
+         return; // HQ level too low
+      }
+    }
+
+    this.deductCost(cost);
+    this.updateResourceUI();
+
+    building.level += 1;
+    building.construction_started_at = new Date().toISOString();
+
+    // Optimistic UI update
+    document.getElementById('upgrade-menu').style.display = 'none';
+    this.selectedBuilding = null;
+
+    if (window.supabaseClient && building.dbId) {
+      await window.supabaseClient
+        .from('buildings')
+        .update({
+          level: building.level,
+          construction_started_at: building.construction_started_at
+        })
+        .eq('id', building.dbId);
+    }
+  }
+
+  openUpgradeMenu(building) {
+    if (this.isDeconstructing || this.isBuilding) return;
+    this.selectedBuilding = building;
+
+    const menu = document.getElementById('upgrade-menu');
+    const title = document.getElementById('upgrade-title');
+    const info = document.getElementById('upgrade-info');
+    const btn = document.getElementById('upgrade-btn');
+
+    if (!menu || !title || !info || !btn) return;
+
+    title.innerText = `${building.type.name} (Lv. ${building.level})`;
+
+    if (this.isBuildingUnderConstruction(building)) {
+      info.innerHTML = `<span style="color: #ecc94b;">Currently under construction...</span>`;
+      btn.disabled = true;
+      btn.innerText = 'Upgrading...';
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      menu.style.display = 'block';
+      return;
+    }
+
+    const cost = this.getUpgradeCost(building);
+    const timeS = this.getConstructionTimeMs({ ...building, level: building.level + 1 }) / 1000;
+
+    // Format cost string
+    let costHtml = '';
+    if (cost.steel === Infinity) {
+       costHtml = `<span style="color: #a0aec0;">Max Level Reached</span>`;
+       btn.disabled = true;
+       btn.innerText = 'Max Level';
+       btn.style.opacity = '0.5';
+       btn.style.cursor = 'not-allowed';
+    } else {
+       costHtml = `
+         <strong>Next Level Cost:</strong><br>
+         Steel: ${cost.steel} <br>
+         Oil: ${cost.oil} <br>
+         Time: ${timeS}s
+       `;
+
+       let canUpgrade = true;
+       let blockReason = '';
+
+       if (!this.canAfford(cost)) {
+         canUpgrade = false;
+         blockReason = 'Not enough resources';
+       } else if (this.getAvailableBuilders() <= 0) {
+         canUpgrade = false;
+         blockReason = 'No Builders available';
+       } else if (building.type.id !== 'HEADQUARTERS') {
+         const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
+         const hqLevel = hq ? hq.level : 0;
+         if (hqLevel < building.level + 1) {
+           canUpgrade = false;
+           blockReason = `Requires Level ${building.level + 1} Headquarters`;
+         }
+       }
+
+       if (canUpgrade) {
+         btn.disabled = false;
+         btn.innerText = 'Upgrade';
+         btn.style.opacity = '1.0';
+         btn.style.cursor = 'pointer';
+         // Remove old listeners
+         btn.onclick = () => this.upgradeBuilding();
+       } else {
+         btn.disabled = true;
+         btn.innerText = blockReason;
+         btn.style.opacity = '0.5';
+         btn.style.cursor = 'not-allowed';
+         btn.onclick = null;
+       }
+    }
+
+    info.innerHTML = costHtml;
+    menu.style.display = 'block';
   }
 
   startBuilding(typeId) {
@@ -517,6 +751,8 @@ class StructureManager {
     this.updateResourceUI();
 
     const newBuilding = new Structure(this.pendingBuildingType.id, this.ghostX, this.ghostY);
+    // New buildings start at level 1 and use construction timer
+    newBuilding.construction_started_at = new Date().toISOString();
     this.buildings.push(newBuilding);
     
     if (window.supabaseClient && window.currentUser) {
@@ -528,7 +764,8 @@ class StructureManager {
           level: newBuilding.level,
           x: newBuilding.x,
           y: newBuilding.y,
-          health: newBuilding.health
+          health: newBuilding.health,
+          construction_started_at: newBuilding.construction_started_at
         })
         .select()
         .single();
@@ -569,6 +806,7 @@ class StructureManager {
   }
 
   draw(ctx) {
+    const now = Date.now();
     const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
     if (hq) {
       const radius = this.getAOERadius();
@@ -584,7 +822,39 @@ class StructureManager {
     }
 
     for (const building of this.buildings) {
-      building.draw(ctx);
+      const isUnderConstruction = this.isBuildingUnderConstruction(building);
+
+      if (isUnderConstruction) {
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        building.draw(ctx);
+        ctx.globalAlpha = 1.0;
+
+        // Draw progress bar
+        const startTime = new Date(building.construction_started_at).getTime();
+        const duration = this.getConstructionTimeMs(building);
+        const elapsed = now - startTime;
+        let progress = Math.max(0, Math.min(1, elapsed / duration));
+
+        const barW = building.type.width * 0.8;
+        const barH = 6;
+        const barX = building.x + (building.type.width - barW) / 2;
+        const barY = building.y + building.type.height / 2 - barH / 2;
+
+        ctx.fillStyle = '#2d3748';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        ctx.fillStyle = '#ecc94b'; // Construction yellow
+        ctx.fillRect(barX, barY, barW * progress, barH);
+
+        ctx.strokeStyle = '#1a202c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+
+        ctx.restore();
+      } else {
+        building.draw(ctx);
+      }
     }
 
     if (this.isBuilding && this.pendingBuildingType) {
