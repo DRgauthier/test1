@@ -227,9 +227,12 @@
   <div id="top-bar">
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
-      <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
-      <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">DB Diagnostics</button>
-      <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
+      <div>
+        <button onclick="document.getElementById('wiki-modal').style.display='flex'" style="background: #ed8936; color: white; border: 1px solid #dd6b20; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">Wiki / Tips</button>
+        <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
+        <button onclick="document.getElementById('db-diagnostic-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">DB Diagnostics</button>
+        <button id="dev-btn" onclick="toggleDevMode()">Dev Mode: OFF</button>
+      </div>
     </div>
   </div>
 
@@ -309,6 +312,37 @@
     </div>
 
     <button id="upgrade-btn" style="width: 100%; padding: 10px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Upgrade</button>
+  </div>
+
+  <!-- Wiki Modal -->
+  <div id="wiki-modal" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 9998; display: none; justify-content: center; align-items: center; color: white;">
+    <div style="background: #1a202c; padding: 30px; border-radius: 8px; border: 1px solid #4a5568; width: 600px; max-height: 80vh; overflow-y: auto; text-align: left; position: relative;">
+      <h2 style="margin-top: 0; color: #4299e1; border-bottom: 1px solid #4a5568; padding-bottom: 10px;">Player Tips & Wiki</h2>
+
+      <div style="font-size: 14px; line-height: 1.6; color: #e2e8f0;">
+        <h3 style="color: #48bb78;">Core Mechanics</h3>
+        <p><strong>Resources:</strong> Steel and Oil are the primary resources used to build and upgrade your base.</p>
+        <p><strong>Builders:</strong> You start with 1 Builder from your Headquarters. Constructing buildings and upgrading them occupies 1 Builder until the timer completes. Expand your Builder capacity by building Worker Huts.</p>
+        <p><strong>Upgrades:</strong> Click on an existing building to open its Upgrade menu. Buildings stop functioning (generating resources, housing units) while they are under construction. The maximum level of any building is determined by the level of your Headquarters.</p>
+
+        <h3 style="color: #48bb78;">Structures</h3>
+        <ul style="padding-left: 20px;">
+          <li><strong style="color: #4299e1;">Headquarters:</strong> The heart of your base. Provides 1 Builder. Upgrading it increases the level cap for all other buildings.</li>
+          <li><strong style="color: #ecc94b;">Worker Hut:</strong> Each completed Worker Hut permanently adds +1 Builder to your global capacity, allowing you to build and upgrade more structures simultaneously.</li>
+          <li><strong style="color: #a0aec0;">Steel Mine:</strong> Passively generates Steel over time. Upgrading it increases the generation rate (1.5x per level).</li>
+          <li><strong style="color: #63b3ed;">Oil Pump:</strong> Passively generates Oil over time. Upgrading it increases the generation rate (1.5x per level).</li>
+          <li><strong style="color: #48bb78;">Supply Depot:</strong> Increases the maximum storage capacity for both Steel and Oil by 500 per depot.</li>
+          <li><strong style="color: #e53e3e;">Barracks:</strong> Allows you to train Soldier units for combat. Provides a base capacity of 10 Soldiers.</li>
+          <li><strong style="color: #fc8181;">Medic Station:</strong> Allows you to train Medic units to heal your troops. Provides a base capacity of 5 Medics.</li>
+          <li><strong style="color: #4a5568;">Gunship Pad:</strong> Unlocks the ability to deploy troops to the World Map via Gunships for territory control missions.</li>
+          <li><strong style="color: #ecc94b;">Defense Turret:</strong> A stationary automated turret that defends your base against incoming threats.</li>
+        </ul>
+      </div>
+
+      <div style="margin-top: 20px; text-align: right;">
+        <button onclick="document.getElementById('wiki-modal').style.display='none'" style="padding: 10px 20px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Close</button>
+      </div>
+    </div>
   </div>
 
   <div id="build-menu-container">
