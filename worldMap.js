@@ -262,6 +262,24 @@ class WorldMap {
     }
   }
 
+  getHighestAvailableGunshipCapacity() {
+    let maxCap = 0;
+    // We get the total number of built gunships
+    const gunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
+    // Currently deployed gunships equal the number of active deployments + recalls
+    // Active deployments represent an outgoing or returning gunship
+    // For simplicity, we just check each gunship's theoretical max cap.
+    // If we wanted to tie a specific gunship instance to a mission, we'd need to mark them 'in-use'.
+    // For now, implicit rule: highest level gunship gives max cap.
+    for (const b of gunships) {
+      const cap = 20 + ((b.level - 1) * 10);
+      if (cap > maxCap) {
+        maxCap = cap;
+      }
+    }
+    return maxCap;
+  }
+
   deployGunship() {
     if (!this.selectedHex || !this.selectedHex.mission) return;
 
@@ -276,6 +294,12 @@ class WorldMap {
     }
     if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic) {
       return alert("You do not have enough troops available!");
+    }
+
+    // Determine max capacity of highest available gunship
+    const maxGunshipCapacity = this.getHighestAvailableGunshipCapacity();
+    if ((sCount + mCount) > maxGunshipCapacity) {
+      return alert(`Your highest available gunship can only carry ${maxGunshipCapacity} troops. You attempted to deploy ${sCount + mCount}.`);
     }
 
     // Remove troops
