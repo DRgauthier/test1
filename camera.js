@@ -68,7 +68,7 @@ function initCamera(canvas) {
     const worldX = ((e.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
     const worldY = ((e.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
 
-    if (sceneManager.currentScene === 'BASE' && structureManager.isBuilding) {
+    if (sceneManager.currentScene === 'BASE' && (structureManager.isBuilding || structureManager.isMoving)) {
       if (structureManager.isOverGhost(worldX, worldY)) {
         isDraggingBuilding = true;
         isDragging = false;
@@ -81,13 +81,7 @@ function initCamera(canvas) {
     } else {
       isDragging = true;
       isDraggingBuilding = false;
-      if (sceneManager.currentScene === 'BASE') {
-        if (!structureManager.isMoving) {
-          canvas.style.cursor = 'grabbing';
-        }
-      } else {
-        canvas.style.cursor = 'grabbing';
-      }
+      canvas.style.cursor = 'grabbing';
     }
   });
 
@@ -234,7 +228,7 @@ function initCamera(canvas) {
       const worldX = ((touch.clientX - rect.left) - window.innerWidth / 2) / cam.zoom + cam.x;
       const worldY = ((touch.clientY - rect.top) - window.innerHeight / 2) / cam.zoom + cam.y;
 
-      if (sceneManager.currentScene === 'BASE' && structureManager.isBuilding) {
+      if (sceneManager.currentScene === 'BASE' && (structureManager.isBuilding || structureManager.isMoving)) {
         if (structureManager.isOverGhost(worldX, worldY)) {
           isDraggingBuilding = true;
           isDragging = false;
