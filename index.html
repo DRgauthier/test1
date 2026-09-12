@@ -369,19 +369,7 @@
       <span>Build Structures</span> <span id="build-toggle">▶</span>
     </div>
     <div id="build-menu-content" style="display: none;">
-      <button onclick="structureManager.startBuilding('HEADQUARTERS')">HQ (St:400)</button>
-      <button onclick="structureManager.startBuilding('BARRACKS')">Barracks (St:150)</button>
-      <button onclick="structureManager.startBuilding('GUNSHIP')">Gunship Pad (St:400)</button>
-      <button onclick="structureManager.startBuilding('SUPPLY_DEPOT')">Supply Depot (St:100)</button>
-      <button onclick="structureManager.startBuilding('TURRET')">Defense Turret (St:100)</button>
-      <button onclick="structureManager.startBuilding('WORKER_HUT')">Worker Hut (St:70)</button>
-      <button onclick="structureManager.startBuilding('MEDIC_STATION')">Medic Station (St:100 Oil:50)</button>
-      <hr style="border-color: #4a5568; width: 100%;" />
-      <button onclick="structureManager.startBuilding('STEEL_MINE')">Steel Mine (St:70)</button>
-      <button onclick="structureManager.startBuilding('OIL_PUMP')">Oil Pump (St:50)</button>
-      <hr style="border-color: #4a5568; width: 100%;" />
-      <button class="danger" onclick="structureManager.startDeconstructing()">Deconstruct (75% Refund)</button>
-      <button class="cancel" onclick="structureManager.cancelAction()">Cancel Action</button>
+      <!-- Populated dynamically via JS -->
     </div>
   </div>
 
@@ -471,6 +459,9 @@
 
       window.npcManager = new NPCManager(structureManager);
       window.missionManager = new MissionManager(structureManager, window.npcManager);
+
+      // Render the build menu initially
+      structureManager.renderBuildMenu();
 
       if (window.supabaseClient && window.currentUser) {
         console.log('[DEBUG] onAuthSuccess: starting initialization for user', window.currentUser.id);
@@ -562,6 +553,7 @@
             hq.construction_started_at = hqData.construction_started_at;
           }
           structureManager.buildings = [hq];
+          structureManager.renderBuildMenu();
 
           window.npcManager.npcs = [];
           window.npcManager.counts = { soldier: 0, medic: 0 };
@@ -580,6 +572,7 @@
               structureManager.buildings.push(b);
             });
           }
+          structureManager.renderBuildMenu();
 
           window.npcManager.npcs = [];
           window.npcManager.counts = { soldier: 0, medic: 0 };
