@@ -2,12 +2,12 @@ const GRID_SIZE = 50;
 
 const BUILDING_TYPES = {
   HEADQUARTERS: { id: 'HEADQUARTERS', name: 'Command Center', width: 150, height: 150, color: '#4299e1', cost: { steel: 400, oil: 0 }, caps: { worker: 5, soldier: 5, medic: 0 } },
-  BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 150, oil: 0 }, caps: { soldier: 10 } },
+  BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 150, oil: 0 }, caps: {} },
   SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 100, oil: 0 } },
-  GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 } },
+  GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 }, caps: {} },
   TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, oil: 0 } },
   WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 70, oil: 0 }, caps: {} }, // caps: { worker: 8 } replaced by global builder mechanic
-  MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 100, oil: 50 }, caps: { medic: 5 } },
+  MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 100, oil: 50 }, caps: {} },
   
   STEEL_MINE: { id: 'STEEL_MINE', name: 'Steel Mine', width: 60, height: 60, color: '#a0aec0', cost: { steel: 70, oil: 0 }, generates: 'steel', baseTime: 10 },
   OIL_PUMP: { id: 'OIL_PUMP', name: 'Oil Pump', width: 50, height: 50, color: '#63b3ed', cost: { steel: 50, oil: 0 }, generates: 'oil', baseTime: 10 }
@@ -28,7 +28,7 @@ const MAX_BUILDINGS_PER_HQ_LEVEL = {
   BARRACKS:      [1, 2, 3, 3, 4],
   TURRET:        [2, 4, 6, 8, 10],
   MEDIC_STATION: [1, 1, 2, 2, 3],
-  GUNSHIP:       [1, 1, 1, 2, 2]
+  GUNSHIP:       [2, 2, 3, 3, 4]
 };
 
 
@@ -340,20 +340,7 @@ class StructureManager {
     const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
     if (!hq) return 600;
 
-    const hqCenterX = (this.isMoving && this.movingBuilding === hq) ? this.ghostX + hq.type.width / 2 : hq.x + hq.type.width / 2;
-    const hqCenterY = (this.isMoving && this.movingBuilding === hq) ? this.ghostY + hq.type.height / 2 : hq.y + hq.type.height / 2;
-    
-    let maxDist = 0;
-    for (const b of this.buildings) {
-      const bCenterX = b.x + b.type.width / 2;
-      const bCenterY = b.y + b.type.height / 2;
-      const dist = Math.hypot(bCenterX - hqCenterX, bCenterY - hqCenterY);
-      if (dist > maxDist) {
-        maxDist = dist;
-      }
-    }
-    
-    return Math.max(600, maxDist + 400); // 400px expansion buffer past furthest structure
+    return 600 + ((hq.level - 1) * 200);
   }
 
   update(npcCount) {
@@ -450,11 +437,10 @@ class StructureManager {
   }
 
   getCapacities() {
-    let caps = { soldier: 0, medic: 0 };
+    let caps = { troop: 0 };
     for (const b of this.buildings) {
-      if (b.type.caps && !this.isBuildingUnderConstruction(b)) {
-        if (b.type.caps.soldier) caps.soldier += b.type.caps.soldier;
-        if (b.type.caps.medic) caps.medic += b.type.caps.medic;
+      if (b.type.id === 'GUNSHIP' && !this.isBuildingUnderConstruction(b)) {
+        caps.troop += 20 + ((b.level - 1) * 10);
       }
     }
     return caps;

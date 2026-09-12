@@ -255,8 +255,23 @@ class NPCManager {
     if (!content) return;
 
     const caps = this.structureManager.getCapacities();
+    const globalTroopCap = caps.troop || 0;
+
+    let totalTroops = 0;
+    let totalQueuedTroops = 0;
+    ['soldier', 'medic'].forEach(k => {
+      totalTroops += this.counts[k];
+      totalQueuedTroops += this.trainingQueue.filter(t => t.typeKey === k).length;
+    });
+    const combinedTotal = totalTroops + totalQueuedTroops;
 
     if (content.children.length === 0) {
+      // Add a global troop capacity header
+      const capHeader = document.createElement('div');
+      capHeader.id = 'troop-cap-header';
+      capHeader.style.cssText = 'font-size: 13px; font-weight: bold; margin-bottom: 10px; text-align: center; color: #a0aec0; border-bottom: 1px solid #4a5568; padding-bottom: 5px;';
+      content.appendChild(capHeader);
+
       ['soldier', 'medic'].forEach(typeKey => {
         const typeObj = NPC_TYPES[typeKey.toUpperCase()];
         
@@ -283,24 +298,27 @@ class NPCManager {
       });
     }
 
+    const capHeader = document.getElementById('troop-cap-header');
+    if (capHeader) {
+      capHeader.innerText = `Global Troop Capacity: ${combinedTotal} / ${globalTroopCap}`;
+    }
+
     ['soldier', 'medic'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
       const count = this.counts[typeKey];
-      const cap = caps[typeKey] || 0;
       const queuedCount = this.trainingQueue.filter(t => t.typeKey === typeKey).length;
       
       const costStr = this.formatCostString(typeObj.cost);
       const displayCount = queuedCount > 0 ? `${count} (+${queuedCount})` : `${count}`;
-      const totalCount = count + queuedCount;
       
       const info = document.getElementById(`info-${typeKey}`);
       if (info) {
-        info.innerText = `${typeObj.name}: ${displayCount}/${cap} (${costStr})`;
+        info.innerText = `${typeObj.name}: ${displayCount} (${costStr})`;
       }
 
       const btn = document.getElementById(`btn-${typeKey}`);
       if (btn) {
-        if (totalCount >= cap || !this.structureManager.canAfford(typeObj.cost)) {
+        if (combinedTotal >= globalTroopCap || !this.structureManager.canAfford(typeObj.cost)) {
           btn.disabled = true;
           btn.style.opacity = '0.5';
           btn.style.cursor = 'not-allowed';
@@ -315,10 +333,19 @@ class NPCManager {
 
   trainNPC(typeKey) {
     const typeObj = NPC_TYPES[typeKey.toUpperCase()];
+    if (!typeObj) return;
+
     const caps = this.structureManager.getCapacities();
-    
-    const queuedCount = this.trainingQueue.filter(t => t.typeKey === typeKey).length;
-    if (this.counts[typeKey] + queuedCount >= caps[typeKey]) return;
+    const globalTroopCap = caps.troop || 0;
+
+    let totalTroops = 0;
+    let totalQueuedTroops = 0;
+    ['soldier', 'medic'].forEach(k => {
+      totalTroops += this.counts[k];
+      totalQueuedTroops += this.trainingQueue.filter(t => t.typeKey === k).length;
+    });
+
+    if (totalTroops + totalQueuedTroops >= globalTroopCap) return;
     if (!this.structureManager.canAfford(typeObj.cost)) return;
 
     let validBuildings = this.structureManager.buildings.filter(b => 
