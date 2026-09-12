@@ -82,7 +82,7 @@ function initCamera(canvas) {
       isDragging = true;
       isDraggingBuilding = false;
       if (sceneManager.currentScene === 'BASE') {
-        if (!structureManager.isDeconstructing) {
+        if (!structureManager.isMoving) {
           canvas.style.cursor = 'grabbing';
         }
       } else {
@@ -173,7 +173,7 @@ function initCamera(canvas) {
     isDraggingBuilding = false;
     
     if (sceneManager.currentScene === 'BASE') {
-      if (!structureManager.isBuilding && !structureManager.isDeconstructing) {
+      if (!structureManager.isBuilding && !structureManager.isMoving) {
         canvas.style.cursor = 'grab';
       } else {
         canvas.style.cursor = 'crosshair';
@@ -197,8 +197,10 @@ function initCamera(canvas) {
       if (structureManager.isBuilding) {
         // Place building is now triggered by UI button, no longer on click.
         // We will just do nothing here.
-      } else if (structureManager.isDeconstructing) {
-        structureManager.deconstructBuilding();
+      } else if (structureManager.isMoving) {
+        if (structureManager.isValidPlacement) {
+          structureManager.confirmMove();
+        }
       } else {
         // --- Click Interaction Logic ---
         for (let i = structureManager.buildings.length - 1; i >= 0; i--) {
