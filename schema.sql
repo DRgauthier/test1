@@ -46,15 +46,23 @@ ALTER TABLE public.buildings ENABLE ROW LEVEL SECURITY;
 
 -- Settings: Anyone can read, no one can write via client
 -- Settings: Authenticated users can read, no one can write via client
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.settings;
 CREATE POLICY "Enable read access for authenticated users" ON public.settings FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Players: Authenticated users can read, users can only update their own record
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.players;
 CREATE POLICY "Enable read access for authenticated users" ON public.players FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for users based on user_id" ON public.players;
 CREATE POLICY "Enable insert for users based on user_id" ON public.players FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.players;
 CREATE POLICY "Enable update for users based on user_id" ON public.players FOR UPDATE USING (auth.uid() = id);
 
 -- Buildings: Authenticated users can read, users can only insert/update/delete their own buildings
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.buildings;
 CREATE POLICY "Enable read access for authenticated users" ON public.buildings FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.buildings;
 CREATE POLICY "Enable insert for authenticated users only" ON public.buildings FOR INSERT WITH CHECK (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.buildings;
 CREATE POLICY "Enable update for users based on user_id" ON public.buildings FOR UPDATE USING (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable delete for users based on user_id" ON public.buildings;
 CREATE POLICY "Enable delete for users based on user_id" ON public.buildings FOR DELETE USING (auth.uid() = player_id);
