@@ -19,6 +19,19 @@ for (const key in BUILDING_TYPES) {
 }
 BUILDING_TYPES.HEADQUARTERS.baseTime = 30;
 
+const MAX_BUILDINGS_PER_HQ_LEVEL = {
+  HEADQUARTERS:  [1, 1, 1, 1, 1],
+  WORKER_HUT:    [2, 3, 4, 5, 6],
+  STEEL_MINE:    [2, 3, 4, 5, 6],
+  OIL_PUMP:      [1, 2, 3, 4, 5],
+  SUPPLY_DEPOT:  [1, 2, 3, 4, 5],
+  BARRACKS:      [1, 2, 3, 3, 4],
+  TURRET:        [2, 4, 6, 8, 10],
+  MEDIC_STATION: [1, 1, 2, 2, 3],
+  GUNSHIP:       [1, 1, 1, 2, 2]
+};
+
+
 class Structure {
   constructor(typeId, x, y) {
     this.type = BUILDING_TYPES[typeId];
@@ -221,6 +234,90 @@ class StructureManager {
     this.updateResourceUI();
 
     setInterval(() => this.syncPlayerState(), 15000);
+  }
+
+
+
+  renderBuildMenu() {
+    const menuContent = document.getElementById('build-menu-content');
+    if (!menuContent) return;
+
+    let html = '';
+
+    const addGroup = (types) => {
+      types.forEach(typeId => {
+        const typeInfo = BUILDING_TYPES[typeId];
+        if (!typeInfo) return;
+
+        const currentCount = this.getBuildingCount(typeId);
+        const maxCount = this.getMaxBuildings(typeId);
+
+        let costStr = `St:${typeInfo.cost.steel}`;
+        if (typeInfo.cost.oil > 0) costStr += ` Oil:${typeInfo.cost.oil}`;
+
+        let buttonText = typeInfo.name;
+        // HQ special name replacement based on previous HTML
+        if (typeId === 'HEADQUARTERS') buttonText = 'HQ';
+        if (typeId === 'GUNSHIP') buttonText = 'Gunship Pad';
+
+        buttonText += ` (${costStr}) (${currentCount}/${maxCount})`;
+
+        const isDisabled = currentCount >= maxCount;
+        const disabledAttr = isDisabled ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '';
+
+        html += `<button onclick="structureManager.startBuilding('${typeId}')" ${disabledAttr}>${buttonText}</button>`;
+      });
+    };
+
+    // First group
+    addGroup([
+      'HEADQUARTERS',
+      'BARRACKS',
+      'GUNSHIP',
+      'SUPPLY_DEPOT',
+      'TURRET',
+      'WORKER_HUT',
+      'MEDIC_STATION'
+    ]);
+
+    html += `<hr style="border-color: #4a5568; width: 100%;" />`;
+
+    // Second group
+    addGroup([
+      'STEEL_MINE',
+      'OIL_PUMP'
+    ]);
+
+    html += `<hr style="border-color: #4a5568; width: 100%;" />`;
+
+    // Action buttons
+    html += `<button class="danger" onclick="structureManager.startDeconstructing()">Deconstruct (75% Refund)</button>`;
+    html += `<button class="cancel" onclick="structureManager.cancelAction()">Cancel Action</button>`;
+
+    menuContent.innerHTML = html;
+  }
+
+  getHQLevel() {
+    const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
+    return hq ? hq.level : 0;
+  }
+
+  getBuildingCount(typeId) {
+    return this.buildings.filter(b => b.type.id === typeId).length;
+  }
+
+  getMaxBuildings(typeId) {
+    const hqLevel = this.getHQLevel();
+    // Use index = level - 1. If HQ level is 0, they can still build the HQ to level 1.
+    const index = Math.max(0, Math.min(hqLevel - 1, 4));
+
+    if (MAX_BUILDINGS_PER_HQ_LEVEL[typeId]) {
+      // Exception: If no HQ is built, they can only build an HQ (and nothing else)
+      if (hqLevel === 0 && typeId !== 'HEADQUARTERS') return 0;
+
+      return MAX_BUILDINGS_PER_HQ_LEVEL[typeId][index];
+    }
+    return 0; // Default if not in config
   }
 
   async syncPlayerState() {
@@ -554,6 +651,7 @@ class StructureManager {
     this.updateResourceUI();
 
     building.level += 1;
+    this.renderBuildMenu();
     building.construction_started_at = new Date().toISOString();
 
     // Optimistic UI update
@@ -653,6 +751,15 @@ class StructureManager {
 
   startBuilding(typeId) {
     if (!BUILDING_TYPES[typeId]) return;
+
+    // Add validation check to prevent building beyond limits
+    const currentCount = this.getBuildingCount(typeId);
+    const maxCount = this.getMaxBuildings(typeId);
+    if (currentCount >= maxCount) {
+        console.warn(`Cannot build ${typeId}: Limit reached (${currentCount}/${maxCount})`);
+        return;
+    }
+
     this.pendingBuildingType = BUILDING_TYPES[typeId];
     this.isBuilding = true;
     this.isDeconstructing = false;
@@ -754,6 +861,7 @@ class StructureManager {
     // New buildings start at level 1 and use construction timer
     newBuilding.construction_started_at = new Date().toISOString();
     this.buildings.push(newBuilding);
+    this.renderBuildMenu();
     
     if (window.supabaseClient && window.currentUser) {
       const { data, error } = await window.supabaseClient
@@ -791,6 +899,7 @@ class StructureManager {
 
     const buildingToRemove = this.hoveredBuilding;
     this.buildings = this.buildings.filter(b => b !== buildingToRemove);
+    this.renderBuildMenu();
     this.refundCost(buildingToRemove.type.cost);
     this.updateResourceUI();
     
