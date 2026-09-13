@@ -192,20 +192,31 @@ class WorldMap {
       document.getElementById('deploy-mission-diff').innerText = '★'.repeat(m.difficulty) + '☆'.repeat(5 - m.difficulty);
       const durationMins = Math.round(m.duration / 3600);
       document.getElementById('deploy-mission-time').innerText = `${durationMins} min${durationMins > 1 ? 's' : ''}`;
-      document.getElementById('deploy-mission-reqs').innerText = `${m.minSoldiers} Soldiers, ${m.minMedics} Medics`;
+
+      let reqsString = `${m.minSoldiers} Soldiers, ${m.minMedics} Medics`;
+      if (m.minJuggernauts) reqsString += `, ${m.minJuggernauts} Juggernauts`;
+      document.getElementById('deploy-mission-reqs').innerText = reqsString;
 
       const availS = window.npcManager.counts.soldier;
       const availM = window.npcManager.counts.medic;
+      const availJ = window.npcManager.counts.juggernaut || 0;
 
       document.getElementById('deploy-avail-s').innerText = availS;
       document.getElementById('deploy-avail-m').innerText = availM;
+      if (document.getElementById('deploy-avail-j')) document.getElementById('deploy-avail-j').innerText = availJ;
 
       const sInput = document.getElementById('world-deploy-s');
       const mInput = document.getElementById('world-deploy-m');
+      const jInput = document.getElementById('world-deploy-j');
+
       sInput.max = availS;
       mInput.max = availM;
       sInput.value = 0;
       mInput.value = 0;
+      if (jInput) {
+        jInput.max = availJ;
+        jInput.value = 0;
+      }
 
       const btn = document.getElementById('send-gunship-btn');
       const warning = document.getElementById('no-gunships-warning-empty');
@@ -286,25 +297,29 @@ class WorldMap {
     const mission = this.selectedHex.mission;
     const sInput = document.getElementById('world-deploy-s');
     const mInput = document.getElementById('world-deploy-m');
+    const jInput = document.getElementById('world-deploy-j');
+
     const sCount = parseInt(sInput.value) || 0;
     const mCount = parseInt(mInput.value) || 0;
+    const jCount = jInput ? (parseInt(jInput.value) || 0) : 0;
 
-    if (sCount < mission.minSoldiers || mCount < mission.minMedics) {
-      return alert(`This mission requires at least ${mission.minSoldiers} Soldiers and ${mission.minMedics} Medics. You assigned ${sCount} Soldiers and ${mCount} Medics.`);
+    if (sCount < mission.minSoldiers || mCount < mission.minMedics || jCount < (mission.minJuggernauts || 0)) {
+      return alert(`This mission requires at least ${mission.minSoldiers} Soldiers, ${mission.minMedics} Medics, and ${mission.minJuggernauts || 0} Juggernauts. You assigned ${sCount} Soldiers, ${mCount} Medics, and ${jCount} Juggernauts.`);
     }
-    if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic) {
+    if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic || jCount > (window.npcManager.counts.juggernaut || 0)) {
       return alert("You do not have enough troops available!");
     }
 
     // Determine max capacity of highest available gunship
     const maxGunshipCapacity = this.getHighestAvailableGunshipCapacity();
-    if ((sCount + mCount) > maxGunshipCapacity) {
-      return alert(`Your highest available gunship can only carry ${maxGunshipCapacity} troops. You attempted to deploy ${sCount + mCount}.`);
+    if ((sCount + mCount + jCount) > maxGunshipCapacity) {
+      return alert(`Your highest available gunship can only carry ${maxGunshipCapacity} troops. You attempted to deploy ${sCount + mCount + jCount}.`);
     }
 
     // Remove troops
     window.missionManager.removeTroops('SOLDIER', sCount);
     window.missionManager.removeTroops('MEDIC', mCount);
+    if (jCount > 0) window.missionManager.removeTroops('JUGGERNAUT', jCount);
 
     // Update hex state
     this.selectedHex.state = 'ACTIVE';
@@ -317,6 +332,7 @@ class WorldMap {
       duration: mission.duration,
       soldiers: sCount,
       medics: mCount,
+      juggernauts: jCount,
       hex: this.selectedHex
     });
 

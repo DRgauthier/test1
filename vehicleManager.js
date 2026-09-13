@@ -107,23 +107,26 @@ class VehicleManager {
     // Calculate new assignments
     const newSoldier = (vehicle.assigned_troops.soldier || 0) + soldierDelta;
     const newMedic = (vehicle.assigned_troops.medic || 0) + medicDelta;
+    const newJuggernaut = (vehicle.assigned_troops.juggernaut || 0) + juggernautDelta;
     
     // Prevent negative troops
-    if (newSoldier < 0 || newMedic < 0) return;
+    if (newSoldier < 0 || newMedic < 0 || newJuggernaut < 0) return;
     
     // Check against capacity
     const capacity = 20 + ((building.level - 1) * 10);
-    if (newSoldier + newMedic > capacity) {
+    if (newSoldier + newMedic + newJuggernaut > capacity) {
         return false; // Exceeds capacity
     }
     
     // Check available pool for additions
     if (soldierDelta > 0 && this.availableTroops.soldier < soldierDelta) return false;
     if (medicDelta > 0 && this.availableTroops.medic < medicDelta) return false;
+    if (juggernautDelta > 0 && this.availableTroops.juggernaut < juggernautDelta) return false;
     
     // Update local state
     vehicle.assigned_troops.soldier = newSoldier;
     vehicle.assigned_troops.medic = newMedic;
+    vehicle.assigned_troops.juggernaut = newJuggernaut;
     
     this.updateAvailableTroops();
     await this.saveVehicle(vehicle);
