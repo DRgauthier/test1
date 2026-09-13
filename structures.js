@@ -3,6 +3,7 @@ const GRID_SIZE = 50;
 const BUILDING_TYPES = {
   HEADQUARTERS: { id: 'HEADQUARTERS', name: 'Command Center', width: 150, height: 150, color: '#4299e1', cost: { steel: 400, oil: 0 }, caps: { worker: 5, soldier: 5, medic: 0 } },
   BARRACKS: { id: 'BARRACKS', name: 'Barracks', width: 100, height: 100, color: '#e53e3e', cost: { steel: 150, oil: 0 }, caps: {} },
+  HEAVY_FACTORY: { id: 'HEAVY_FACTORY', name: 'Heavy Factory', width: 120, height: 120, color: '#4a4a4a', cost: { steel: 300, oil: 150 }, caps: {} },
   SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 100, oil: 0 } },
   GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 }, caps: {} },
   TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, oil: 0 } },
@@ -26,6 +27,7 @@ const MAX_BUILDINGS_PER_HQ_LEVEL = {
   OIL_PUMP:      [1, 2, 3, 4, 5],
   SUPPLY_DEPOT:  [1, 2, 3, 4, 5],
   BARRACKS:      [1, 2, 3, 3, 4],
+  HEAVY_FACTORY: [0, 1, 2, 2, 3],
   TURRET:        [2, 4, 6, 8, 10],
   MEDIC_STATION: [1, 1, 2, 2, 3],
   GUNSHIP:       [2, 2, 3, 3, 4]
@@ -77,6 +79,24 @@ class Structure {
         }
         break;
         
+      case 'HEAVY_FACTORY':
+        ctx.fillStyle = '#2d3748';
+        ctx.fillRect(w * 0.1, h * 0.1, w * 0.8, h * 0.8);
+        ctx.strokeRect(w * 0.1, h * 0.1, w * 0.8, h * 0.8);
+
+        ctx.fillStyle = '#a0aec0';
+        for(let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(w * 0.3 + (i * w * 0.2), h * 0.3, w * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#1a202c';
+        ctx.fillRect(w * 0.2, h * 0.6, w * 0.6, h * 0.2);
+        ctx.strokeRect(w * 0.2, h * 0.6, w * 0.6, h * 0.2);
+        break;
+
       case 'SUPPLY_DEPOT':
         const pad = 6;
         const cw = w/2 - pad*1.5;
@@ -276,6 +296,7 @@ class StructureManager {
     addGroup([
       'HEADQUARTERS',
       'BARRACKS',
+      'HEAVY_FACTORY',
       'GUNSHIP',
       'SUPPLY_DEPOT',
       'TURRET',
