@@ -176,7 +176,7 @@ function initCamera(canvas) {
       canvas.style.cursor = 'grab';
     }
 
-    if (!hasDragged) {
+    if (!hasDragged && e.target === canvas) {
       handleInteraction(e.clientX, e.clientY);
     }
   });
@@ -322,7 +322,7 @@ function initCamera(canvas) {
       const distance = Math.hypot(dx, dy);
 
       // Tap detection threshold: <= 300ms and <= 15px movement
-      if (timeElapsed <= 300 && distance <= 15) {
+      if (timeElapsed <= 300 && distance <= 15 && e.target === canvas) {
         handleInteraction(lastMouseX, lastMouseY);
       }
     }
