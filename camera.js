@@ -420,7 +420,6 @@ function initCamera(canvas) {
       worldMap.draw(ctx);
     }
 
-    if (window.missionManager) window.missionManager.update();
 
     ctx.restore();
 

@@ -89,3 +89,51 @@ DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.vehic
 CREATE POLICY "Enable update for users based on user_id" ON public.vehicles FOR UPDATE USING (auth.uid() = player_id);
 DROP POLICY IF EXISTS "Enable delete for users based on user_id" ON public.vehicles;
 CREATE POLICY "Enable delete for users based on user_id" ON public.vehicles FOR DELETE USING (auth.uid() = player_id);
+-- captured_tiles table
+CREATE TABLE IF NOT EXISTS public.captured_tiles (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    player_id UUID REFERENCES public.players(id) ON DELETE CASCADE NOT NULL,
+    hex_q INTEGER NOT NULL,
+    hex_r INTEGER NOT NULL,
+    conscript_count INTEGER DEFAULT 0,
+    last_conscript_update TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    garrison_troops JSONB DEFAULT '{"soldier": 0, "medic": 0, "juggernaut": 0}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- deployments table
+CREATE TABLE IF NOT EXISTS public.deployments (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    player_id UUID REFERENCES public.players(id) ON DELETE CASCADE NOT NULL,
+    origin_q INTEGER NOT NULL,
+    origin_r INTEGER NOT NULL,
+    target_q INTEGER NOT NULL,
+    target_r INTEGER NOT NULL,
+    payload JSONB NOT NULL,
+    arrival_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_return_trip BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.captured_tiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deployments ENABLE ROW LEVEL SECURITY;
+
+-- captured_tiles RLS
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.captured_tiles;
+CREATE POLICY "Enable read access for authenticated users" ON public.captured_tiles FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.captured_tiles;
+CREATE POLICY "Enable insert for authenticated users only" ON public.captured_tiles FOR INSERT WITH CHECK (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.captured_tiles;
+CREATE POLICY "Enable update for users based on user_id" ON public.captured_tiles FOR UPDATE USING (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable delete for users based on user_id" ON public.captured_tiles;
+CREATE POLICY "Enable delete for users based on user_id" ON public.captured_tiles FOR DELETE USING (auth.uid() = player_id);
+
+-- deployments RLS
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.deployments;
+CREATE POLICY "Enable read access for authenticated users" ON public.deployments FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.deployments;
+CREATE POLICY "Enable insert for authenticated users only" ON public.deployments FOR INSERT WITH CHECK (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.deployments;
+CREATE POLICY "Enable update for users based on user_id" ON public.deployments FOR UPDATE USING (auth.uid() = player_id);
+DROP POLICY IF EXISTS "Enable delete for users based on user_id" ON public.deployments;
+CREATE POLICY "Enable delete for users based on user_id" ON public.deployments FOR DELETE USING (auth.uid() = player_id);
