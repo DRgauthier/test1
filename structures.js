@@ -300,6 +300,12 @@ class StructureManager {
     menuContent.innerHTML = html;
   }
 
+  getMaxBuildingLevel(typeId) {
+    const buildings = this.buildings.filter(b => b.type.id === typeId);
+    if (buildings.length === 0) return 1;
+    return Math.max(...buildings.map(b => b.level));
+  }
+
   getHQLevel() {
     const hq = this.buildings.find(b => b.type.id === 'HEADQUARTERS');
     return hq ? hq.level : 0;

@@ -232,12 +232,21 @@ class Medic extends NPC {
   }
 }
 
+
+class Juggernaut extends Soldier {
+  constructor(x, y) {
+    super(x, y);
+    this.type = NPC_TYPES.JUGGERNAUT;
+    this.range = 80;
+  }
+}
+
 class NPCManager {
   constructor(structureManager) {
     this.structureManager = structureManager;
     this.npcs = [];
     this.trainingQueue = []; 
-    this.counts = { soldier: 0, medic: 0 };
+    this.counts = { soldier: 0, medic: 0, juggernaut: 0 };
     this.initUI();
   }
 
@@ -306,7 +315,7 @@ class NPCManager {
 
     let totalTroops = 0;
     let totalQueuedTroops = 0;
-    ['soldier', 'medic'].forEach(k => {
+    ['soldier', 'medic', 'juggernaut'].forEach(k => {
       if (window.vehicleManager) {
         totalTroops += window.vehicleManager.totalTroops[k] || 0;
       } else {
@@ -323,7 +332,7 @@ class NPCManager {
       capHeader.style.cssText = 'font-size: 13px; font-weight: bold; margin-bottom: 10px; text-align: center; color: #a0aec0; border-bottom: 1px solid #4a5568; padding-bottom: 5px;';
       content.appendChild(capHeader);
 
-      ['soldier', 'medic'].forEach(typeKey => {
+      ['soldier', 'medic', 'juggernaut'].forEach(typeKey => {
         const typeObj = NPC_TYPES[typeKey.toUpperCase()];
         
         const row = document.createElement('div');
@@ -354,7 +363,7 @@ class NPCManager {
       capHeader.innerText = `Global Troop Capacity: ${combinedTotal} / ${globalTroopCap}`;
     }
 
-    ['soldier', 'medic'].forEach(typeKey => {
+    ['soldier', 'medic', 'juggernaut'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
       const count = window.vehicleManager ? (window.vehicleManager.totalTroops[typeKey] || 0) : this.counts[typeKey];
       const queuedCount = this.trainingQueue.filter(t => t.typeKey === typeKey).length;
@@ -391,7 +400,7 @@ class NPCManager {
 
     let totalTroops = 0;
     let totalQueuedTroops = 0;
-    ['soldier', 'medic'].forEach(k => {
+    ['soldier', 'medic', 'juggernaut'].forEach(k => {
       if (window.vehicleManager) {
         totalTroops += window.vehicleManager.totalTroops[k] || 0;
       } else {
@@ -455,6 +464,7 @@ class NPCManager {
           let newNPC;
           if (task.typeKey === 'soldier') newNPC = new Soldier(spawnX, spawnY);
           else if (task.typeKey === 'medic') newNPC = new Medic(spawnX, spawnY);
+          else if (task.typeKey === 'juggernaut') newNPC = new Juggernaut(spawnX, spawnY);
 
           if (newNPC) {
             this.npcs.push(newNPC);
@@ -495,7 +505,7 @@ class NPCManager {
 
     for (const npc of this.npcs) {
       if (npc instanceof Medic) npc.update(this.npcs);
-      else if (npc instanceof Soldier) npc.update(enemies);
+      else if (npc instanceof Soldier || npc instanceof Juggernaut) npc.update(enemies);
       else npc.update(); 
     }
     

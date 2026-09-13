@@ -379,6 +379,8 @@ class WorldMap {
 
       document.getElementById('deploy-avail-s').innerText = window.npcManager.counts.soldier;
       document.getElementById('deploy-avail-m').innerText = window.npcManager.counts.medic;
+      const juggEl = document.getElementById('deploy-avail-j');
+      if (juggEl) juggEl.innerText = window.npcManager.counts.juggernaut;
 
       // Calculate total conscripts from all captured bases
       let totalConscripts = 0;
@@ -532,6 +534,8 @@ class WorldMap {
 
     const sCount = parseInt(document.getElementById('world-deploy-s').value) || 0;
     const mCount = parseInt(document.getElementById('world-deploy-m').value) || 0;
+    const juggInput = document.getElementById('world-deploy-j');
+    const jCount = juggInput ? parseInt(juggInput.value) || 0 : 0;
     const gunshipsCount = parseInt(document.getElementById('world-deploy-gunships').value) || 0;
     const stacksCount = parseInt(document.getElementById('world-deploy-stacks').value) || 0;
 
@@ -542,20 +546,26 @@ class WorldMap {
     const maxCap = this.getHighestAvailableGunshipCapacity() || 20;
 
     // Validate Physical Capacity
-    if ((sCount + mCount) > (gunshipsCount * maxCap)) {
-      return alert(`Your ${gunshipsCount} gunship(s) can only carry ${gunshipsCount * maxCap} troops. You attempted to deploy ${sCount + mCount}.`);
+    if ((sCount + mCount + jCount) > (gunshipsCount * maxCap)) {
+      return alert(`Your ${gunshipsCount} gunship(s) can only carry ${gunshipsCount * maxCap} troops. You attempted to deploy ${sCount + mCount + jCount}.`);
     }
 
     // Validate Troops available
-    if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic) {
+    if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic || jCount > window.npcManager.counts.juggernaut) {
       return alert("You do not have enough base troops available!");
     }
 
     // Remove base troops locally immediately
     // Note: since we don't have missionManager anymore, we just manually remove them
-    let removedS = 0, removedM = 0;
+    let removedS = 0, removedM = 0, jRemoved = 0;
     for (let i = window.npcManager.npcs.length - 1; i >= 0; i--) {
       const npc = window.npcManager.npcs[i];
+      if (npc.type.id === 'JUGGERNAUT' && jRemoved < jCount) {
+        window.npcManager.npcs.splice(i, 1);
+        window.npcManager.counts.juggernaut--;
+        jRemoved++;
+        continue;
+      }
       if (removedS < sCount && npc.type.id === 'SOLDIER') {
         window.npcManager.npcs.splice(i, 1);
         window.npcManager.counts.soldier--;
