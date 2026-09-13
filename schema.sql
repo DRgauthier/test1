@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.players (
     hex_y INTEGER, -- overworld Hex Y coordinate of the player's base
     steel NUMERIC DEFAULT 0,
     oil NUMERIC DEFAULT 0,
-    troop_counts JSONB DEFAULT '{"soldier": 0, "medic": 0}'::jsonb,
+    troop_counts JSONB DEFAULT '{"soldier": 0, "medic": 0, "juggernaut": 0}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
     building_id UUID REFERENCES public.buildings(id) ON DELETE CASCADE,
     type TEXT NOT NULL,
     status TEXT DEFAULT 'idle',
-    assigned_troops JSONB DEFAULT '{"soldier": 0, "medic": 0}'::jsonb,
+    assigned_troops JSONB DEFAULT '{"soldier": 0, "medic": 0, "juggernaut": 0}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

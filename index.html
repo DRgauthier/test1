@@ -317,12 +317,16 @@
 
       <div style="display: flex; justify-content: space-between; gap: 10px; align-items: center; background: #1a202c; padding: 10px; border-radius: 6px; border: 1px solid #4a5568;">
         <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-          Assign Soldiers:
-          <input type="number" id="world-deploy-s" min="0" value="0" style="width: 60px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
+          Soldiers:
+          <input type="number" id="world-deploy-s" min="0" value="0" style="width: 50px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
         </label>
         <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-          Assign Medics:
-          <input type="number" id="world-deploy-m" min="0" value="0" style="width: 60px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
+          Medics:
+          <input type="number" id="world-deploy-m" min="0" value="0" style="width: 50px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
+        </label>
+        <label style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+          Juggernauts:
+          <input type="number" id="world-deploy-j" min="0" value="0" style="width: 50px; background: #2d3748; color: white; border: 1px solid #718096; padding: 6px; border-radius: 4px;">
         </label>
       </div>
       <p id="no-gunships-warning-empty" style="color: #fc8181; font-size: 13px; text-align: center; display: none; font-weight: bold; margin-top: 10px;">No available gunships.</p>
@@ -422,15 +426,19 @@
       
       const assignedSoldiers = vehicle.assigned_troops.soldier || 0;
       const assignedMedics = vehicle.assigned_troops.medic || 0;
-      const totalAssigned = assignedSoldiers + assignedMedics;
+      const assignedJuggernauts = vehicle.assigned_troops.juggernaut || 0;
+      const totalAssigned = assignedSoldiers + assignedMedics + assignedJuggernauts; // 1 capacity for juggernauts as well currently
       
       document.getElementById('vehicle-capacity-text').innerText = `${totalAssigned}/${capacity}`;
       
-      document.getElementById('vehicle-avail-soldier').innerText = window.vehicleManager.availableTroops.soldier;
+      document.getElementById('vehicle-avail-soldier').innerText = window.vehicleManager.availableTroops.soldier || 0;
       document.getElementById('vehicle-assigned-soldier').innerText = assignedSoldiers;
       
-      document.getElementById('vehicle-avail-medic').innerText = window.vehicleManager.availableTroops.medic;
+      document.getElementById('vehicle-avail-medic').innerText = window.vehicleManager.availableTroops.medic || 0;
       document.getElementById('vehicle-assigned-medic').innerText = assignedMedics;
+
+      document.getElementById('vehicle-avail-juggernaut').innerText = window.vehicleManager.availableTroops.juggernaut || 0;
+      document.getElementById('vehicle-assigned-juggernaut').innerText = assignedJuggernauts;
     }
   </script>
 

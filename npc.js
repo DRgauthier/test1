@@ -1,6 +1,7 @@
 const NPC_TYPES = {
-  SOLDIER: { id: 'SOLDIER', name: 'Soldier', cost: { steel: 100, oil: 20 }, health: 150, speed: 1.2, color: '#e53e3e', size: 12, buildTime: 400, reqBuilding: 'BARRACKS' },
-  MEDIC: { id: 'MEDIC', name: 'Medic', cost: { steel: 50, oil: 50 }, health: 80, speed: 1.0, color: '#fc8181', size: 10, buildTime: 400, reqBuilding: 'MEDIC_STATION' }
+  SOLDIER: { id: 'SOLDIER', name: 'Soldier', cost: { steel: 100, oil: 20 }, health: 150, damage: 10, speed: 1.2, color: '#e53e3e', size: 12, buildTime: 400, reqBuilding: 'BARRACKS' },
+  MEDIC: { id: 'MEDIC', name: 'Medic', cost: { steel: 50, oil: 50 }, health: 80, healAmount: 5, speed: 1.0, color: '#fc8181', size: 10, buildTime: 400, reqBuilding: 'MEDIC_STATION' },
+  JUGGERNAUT: { id: 'JUGGERNAUT', name: 'Juggernaut', cost: { steel: 250, oil: 100 }, health: 500, damage: 25, speed: 0.8, color: '#8b0000', size: 18, buildTime: 600, reqBuilding: 'HEAVY_FACTORY' }
 };
 
 class NPC {
@@ -8,11 +9,24 @@ class NPC {
     this.type = type;
     this.x = x;
     this.y = y;
-    this.health = type.health;
-    this.maxHealth = type.health;
+
+    this.health = this.getEffectiveMaxHealth();
     
     this.state = 'IDLE';
     this.target = null;
+  }
+
+  getEffectiveMaxHealth() {
+    const level = window.structureManager ? window.structureManager.getMaxBuildingLevel(this.type.reqBuilding) : 1;
+    return this.type.health * Math.pow(1.2, level - 1);
+  }
+
+  get maxHealth() {
+    return this.getEffectiveMaxHealth();
+  }
+
+  set maxHealth(val) {
+    // Readonly externally
   }
 
   moveTowards(tx, ty) {
@@ -39,17 +53,32 @@ class NPC {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    if (this.health < this.maxHealth) {
+    const currentMaxHealth = this.maxHealth;
+    // ensure health doesn't overflow dynamically updated maxHealth
+    if (this.health > currentMaxHealth) {
+      this.health = currentMaxHealth;
+    }
+
+    if (this.health < currentMaxHealth) {
       const barW = 20;
       const barH = 4;
       ctx.fillStyle = '#e53e3e';
       ctx.fillRect(this.x - barW/2, this.y - this.type.size - 8, barW, barH);
       ctx.fillStyle = '#48bb78';
-      ctx.fillRect(this.x - barW/2, this.y - this.type.size - 8, barW * (this.health / this.maxHealth), barH);
+      ctx.fillRect(this.x - barW/2, this.y - this.type.size - 8, barW * (this.health / currentMaxHealth), barH);
     }
   }
 
   update() {
+    // Ensure health scales up dynamically if max health increases
+    const currentMaxHealth = this.maxHealth;
+    if (!this._lastMaxHealth) this._lastMaxHealth = currentMaxHealth;
+    if (currentMaxHealth > this._lastMaxHealth) {
+        const diff = currentMaxHealth - this._lastMaxHealth;
+        this.health += diff;
+        this._lastMaxHealth = currentMaxHealth;
+    }
+
     // Override in subclasses
   }
 }
@@ -58,12 +87,17 @@ class Soldier extends NPC {
   constructor(x, y) {
     super(NPC_TYPES.SOLDIER, x, y);
     this.range = 150;
-    this.damage = 10;
     this.patrolTarget = null;
     this.patrolWait = 0;
   }
 
+  get effectiveDamage() {
+    const level = window.structureManager ? window.structureManager.getMaxBuildingLevel(this.type.reqBuilding) : 1;
+    return this.type.damage * Math.pow(1.2, level - 1);
+  }
+
   update(enemies) {
+    super.update();
     if (enemies && enemies.length > 0) {
       this.patrolTarget = null; 
       
