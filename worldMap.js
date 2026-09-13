@@ -85,16 +85,11 @@ class WorldMap {
         const x = q * this.hexWidth + xOffset;
         const y = r * this.hexHeight * 0.75;
 
-        const rngVal = this.rng();
-        let state = 'EMPTY';
-        let difficulty = 0;
+        const rngVal = this.rng(); // Consume RNG to preserve seed consistency if needed elsewhere
 
-        // Roughly 15% chance for a hex to be an NPC Base
-        if (rngVal < 0.15) {
-          state = 'NPC_BASE';
-          // Calculate difficulty 1-5 based on another rng roll
-          difficulty = Math.floor(this.rng() * 5) + 1;
-        }
+        // Every tile is an NPC base
+        let state = 'NPC_BASE';
+        let difficulty = Math.floor(this.rng() * 5) + 1;
 
         this.hexes.push({
           q: q,
@@ -126,7 +121,12 @@ class WorldMap {
     ctx.fillStyle = color;
     ctx.fill();
 
-    if (hexState === 'NPC_BASE') {
+    if (hexState === 'PLAYER_BASE') {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#4299e1'; // Using blue border for all player bases to distinguish from NPC/Empty
+      ctx.fillStyle = 'rgba(66, 153, 225, 0.2)';
+      ctx.fill();
+    } else if (hexState === 'NPC_BASE') {
       ctx.lineWidth = 2;
       ctx.strokeStyle = '#e53e3e';
       ctx.fillStyle = 'rgba(229, 62, 62, 0.5)';
@@ -171,6 +171,20 @@ class WorldMap {
 
     if (players) {
       this.otherPlayers = players;
+
+      // Override hex state for other players
+      for (const player of players) {
+        const hex = this.hexes.find(h => h.q === player.hex_x && h.r === player.hex_y);
+        if (hex) {
+          hex.state = 'PLAYER_BASE';
+        }
+      }
+    }
+
+    // Override hex state for current player
+    const homeHex = this.hexes.find(h => h.q === window.currentUser.hex_x && h.r === window.currentUser.hex_y);
+    if (homeHex) {
+      homeHex.state = 'PLAYER_BASE';
     }
 
     // Fetch captured tiles
@@ -360,7 +374,10 @@ class WorldMap {
     document.getElementById('hex-content-npc').style.display = 'none';
     document.getElementById('hex-content-captured').style.display = 'none';
 
-    if (hex.state === 'NPC_BASE') {
+    if (hex.state === 'PLAYER_BASE') {
+      // Just show basic info, no deploy menu for player bases right now
+      document.getElementById('hex-coords').innerText += ' (Player Base)';
+    } else if (hex.state === 'NPC_BASE') {
       document.getElementById('hex-content-npc').style.display = 'block';
       document.getElementById('deploy-npc-diff').innerText = '★'.repeat(hex.difficulty) + '☆'.repeat(5 - hex.difficulty);
 
