@@ -716,10 +716,32 @@ class StructureManager {
     const title = document.getElementById('upgrade-title');
     const info = document.getElementById('upgrade-info');
     const btn = document.getElementById('upgrade-btn');
+    const manageVehicleBtn = document.getElementById('manage-vehicle-btn');
 
     if (!menu || !title || !info || !btn) return;
 
     title.innerText = `${building.type.name} (Lv. ${building.level})`;
+
+    // Check if the building is a vehicle provider (like gunship pad)
+    if (manageVehicleBtn) {
+      if (building.type.id === 'GUNSHIP_PAD' && !this.isBuildingUnderConstruction(building)) {
+        manageVehicleBtn.style.display = 'block';
+        manageVehicleBtn.onclick = async () => {
+          menu.style.display = 'none'; // hide upgrade menu
+          if (window.vehicleManager) {
+            const vehicle = await window.vehicleManager.getVehicleForBuilding(building.id);
+            if (vehicle) {
+              window.currentVehicleId = vehicle.id;
+              const capacity = 20 + ((building.level - 1) * 10);
+              window.updateVehicleMenuUI(vehicle, capacity);
+              document.getElementById('vehicle-management-modal').style.display = 'flex';
+            }
+          }
+        };
+      } else {
+        manageVehicleBtn.style.display = 'none';
+      }
+    }
 
     if (this.isBuildingUnderConstruction(building)) {
       info.innerHTML = `<span style="color: #ecc94b;">Currently under construction...</span>`;

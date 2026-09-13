@@ -207,6 +207,19 @@ class NPCManager {
     this.initUI();
   }
 
+  async syncTroopsToDb() {
+    if (!window.currentUser || !window.supabase || !window.vehicleManager) return;
+    
+    const { error } = await window.supabase
+      .from('players')
+      .update({ troop_counts: window.vehicleManager.totalTroops })
+      .eq('id', window.currentUser.id);
+      
+    if (error) {
+      console.error("Error syncing troops to db:", error);
+    }
+  }
+
   initUI() {
     const uiContainer = document.createElement('div');
     uiContainer.id = 'npc-menu';
@@ -260,7 +273,11 @@ class NPCManager {
     let totalTroops = 0;
     let totalQueuedTroops = 0;
     ['soldier', 'medic'].forEach(k => {
-      totalTroops += this.counts[k];
+      if (window.vehicleManager) {
+        totalTroops += window.vehicleManager.totalTroops[k] || 0;
+      } else {
+        totalTroops += this.counts[k];
+      }
       totalQueuedTroops += this.trainingQueue.filter(t => t.typeKey === k).length;
     });
     const combinedTotal = totalTroops + totalQueuedTroops;
@@ -305,7 +322,7 @@ class NPCManager {
 
     ['soldier', 'medic'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
-      const count = this.counts[typeKey];
+      const count = window.vehicleManager ? (window.vehicleManager.totalTroops[typeKey] || 0) : this.counts[typeKey];
       const queuedCount = this.trainingQueue.filter(t => t.typeKey === typeKey).length;
       
       const costStr = this.formatCostString(typeObj.cost);
@@ -341,7 +358,11 @@ class NPCManager {
     let totalTroops = 0;
     let totalQueuedTroops = 0;
     ['soldier', 'medic'].forEach(k => {
-      totalTroops += this.counts[k];
+      if (window.vehicleManager) {
+        totalTroops += window.vehicleManager.totalTroops[k] || 0;
+      } else {
+        totalTroops += this.counts[k];
+      }
       totalQueuedTroops += this.trainingQueue.filter(t => t.typeKey === k).length;
     });
 
@@ -405,8 +426,11 @@ class NPCManager {
             this.npcs.push(newNPC);
             this.counts[task.typeKey]++;
 
-            // For soldiers and medics, we no longer store them in supabase workers table as requested
-            // (workers table has been removed)
+            if (window.vehicleManager) {
+              window.vehicleManager.totalTroops[task.typeKey]++;
+              window.vehicleManager.updateAvailableTroops();
+              this.syncTroopsToDb();
+            }
           }
           
           this.trainingQueue.splice(i, 1);
@@ -421,9 +445,16 @@ class NPCManager {
         const npc = this.npcs[i];
 
         if (npc.health <= 0) {
-          this.counts[npc.type.id.toLowerCase()]--;
+          const typeKey = npc.type.id.toLowerCase();
+          this.counts[typeKey]--;
           this.npcs.splice(i, 1);
           uiNeedsUpdate = true; 
+          
+          if (window.vehicleManager) {
+            window.vehicleManager.totalTroops[typeKey] = Math.max(0, window.vehicleManager.totalTroops[typeKey] - 1);
+            window.vehicleManager.updateAvailableTroops();
+            this.syncTroopsToDb();
+          }
         }
       }
     }

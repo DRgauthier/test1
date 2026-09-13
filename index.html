@@ -363,12 +363,76 @@
 
 
     <button id="upgrade-btn" style="width: 100%; padding: 10px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">Upgrade</button>
+    <button id="manage-vehicle-btn" style="width: 100%; padding: 10px; background: #ecc94b; color: #1a202c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 10px; display: none;">Manage Gunship</button>
     <div style="display: flex; gap: 10px; margin-top: 10px;">
       <button id="move-btn" onclick="window.structureManager.startMoving()" style="flex: 1; padding: 10px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Move</button>
       <button id="deconstruct-btn" onclick="window.structureManager.deconstructSelectedBuilding()" style="flex: 1; padding: 10px; background: #e53e3e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Deconstruct</button>
     </div>
 
   </div>
+
+  <!-- Vehicle Management Modal -->
+  <div id="vehicle-management-modal" style="display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 9000; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif;">
+    <div style="background: rgba(26, 32, 44, 0.95); padding: 25px; border-radius: 8px; border: 1px solid #4a5568; width: 350px;">
+      <h2 style="margin: 0 0 15px 0; border-bottom: 1px solid #4a5568; padding-bottom: 10px; display: flex; justify-content: space-between;">
+        Gunship Management
+        <button onclick="document.getElementById('vehicle-management-modal').style.display='none'" style="background: none; border: none; color: #a0aec0; cursor: pointer; font-size: 20px;">&times;</button>
+      </h2>
+      
+      <div style="margin-bottom: 15px; font-size: 14px; color: #a0aec0; text-align: center;">
+        Vehicle Capacity: <span id="vehicle-capacity-text">0/0</span>
+      </div>
+      
+      <div style="background: #2d3748; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #ecc94b;">Assign Troops</h3>
+        
+        <!-- Soldier Management -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div>
+            <div style="font-weight: bold;">Soldiers</div>
+            <div style="font-size: 12px; color: #a0aec0;">Avail: <span id="vehicle-avail-soldier">0</span> | Assigned: <span id="vehicle-assigned-soldier">0</span></div>
+          </div>
+          <div style="display: flex; gap: 5px;">
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, -1, 0)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 1, 0)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+          </div>
+        </div>
+
+        <!-- Medic Management -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: bold;">Medics</div>
+            <div style="font-size: 12px; color: #a0aec0;">Avail: <span id="vehicle-avail-medic">0</span> | Assigned: <span id="vehicle-assigned-medic">0</span></div>
+          </div>
+          <div style="display: flex; gap: 5px;">
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, -1)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, 1)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+          </div>
+        </div>
+      </div>
+      
+      <button onclick="document.getElementById('vehicle-management-modal').style.display='none'" style="width: 100%; padding: 10px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Done</button>
+    </div>
+  </div>
+
+  <script>
+    // Global UI update function for the vehicle menu
+    window.updateVehicleMenuUI = function(vehicle, capacity) {
+      if (!vehicle) return;
+      
+      const assignedSoldiers = vehicle.assigned_troops.soldier || 0;
+      const assignedMedics = vehicle.assigned_troops.medic || 0;
+      const totalAssigned = assignedSoldiers + assignedMedics;
+      
+      document.getElementById('vehicle-capacity-text').innerText = `${totalAssigned}/${capacity}`;
+      
+      document.getElementById('vehicle-avail-soldier').innerText = window.vehicleManager.availableTroops.soldier;
+      document.getElementById('vehicle-assigned-soldier').innerText = assignedSoldiers;
+      
+      document.getElementById('vehicle-avail-medic').innerText = window.vehicleManager.availableTroops.medic;
+      document.getElementById('vehicle-assigned-medic').innerText = assignedMedics;
+    }
+  </script>
 
   <div id="build-menu-container">
     <div id="build-menu-header" onclick="toggleBuildMenu()">
@@ -515,6 +579,14 @@
 
           structureManager.resources.steel = player.steel || 0;
           structureManager.resources.oil = player.oil || 0;
+          
+          if (window.vehicleManager) {
+            await window.vehicleManager.loadVehicles();
+            if (window.npcManager) {
+              window.npcManager.counts.soldier = window.vehicleManager.totalTroops.soldier;
+              window.npcManager.counts.medic = window.vehicleManager.totalTroops.medic;
+            }
+          }
         }
 
         // Fetch buildings
