@@ -84,8 +84,8 @@ class NPC {
 }
 
 class Soldier extends NPC {
-  constructor(x, y) {
-    super(NPC_TYPES.SOLDIER, x, y);
+  constructor(x, y, type = NPC_TYPES.SOLDIER) {
+    super(type, x, y);
     this.range = 150;
     this.patrolTarget = null;
     this.patrolWait = 0;
@@ -235,8 +235,7 @@ class Medic extends NPC {
 
 class Juggernaut extends Soldier {
   constructor(x, y) {
-    super(x, y);
-    this.type = NPC_TYPES.JUGGERNAUT;
+    super(x, y, NPC_TYPES.JUGGERNAUT);
     this.range = 80;
   }
 }
@@ -378,14 +377,30 @@ class NPCManager {
 
       const btn = document.getElementById(`btn-${typeKey}`);
       if (btn) {
-        if (combinedTotal >= globalTroopCap || !this.structureManager.canAfford(typeObj.cost)) {
+        // Also check if they have the required building
+        const hasReqBuilding = this.structureManager.buildings.some(b =>
+          b.type.id === typeObj.reqBuilding || b.type.id === 'HEADQUARTERS'
+        );
+        // Special case: Juggernauts require Heavy Factory explicitly, headquarters cannot substitute
+        const hasStrictReqBuilding = typeKey === 'juggernaut'
+          ? this.structureManager.buildings.some(b => b.type.id === typeObj.reqBuilding)
+          : hasReqBuilding;
+
+        if (!hasStrictReqBuilding) {
+           btn.disabled = true;
+           btn.style.opacity = '0.5';
+           btn.style.cursor = 'not-allowed';
+           btn.innerText = `Requires ${typeObj.reqBuilding.replace('_', ' ')}`;
+        } else if (combinedTotal >= globalTroopCap || !this.structureManager.canAfford(typeObj.cost)) {
           btn.disabled = true;
           btn.style.opacity = '0.5';
           btn.style.cursor = 'not-allowed';
+          btn.innerText = 'Train';
         } else {
           btn.disabled = false;
           btn.style.opacity = '1.0';
           btn.style.cursor = 'pointer';
+          btn.innerText = 'Train';
         }
       }
     });
@@ -413,7 +428,7 @@ class NPCManager {
     if (!this.structureManager.canAfford(typeObj.cost)) return;
 
     let validBuildings = this.structureManager.buildings.filter(b => 
-      b.type.id === typeObj.reqBuilding || b.type.id === 'HEADQUARTERS'
+      b.type.id === typeObj.reqBuilding || (typeKey !== 'juggernaut' && b.type.id === 'HEADQUARTERS')
     );
     if (validBuildings.length === 0) return;
 
