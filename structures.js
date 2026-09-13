@@ -756,7 +756,7 @@ class StructureManager {
         manageVehicleBtn.onclick = async () => {
           menu.style.display = 'none'; // hide upgrade menu
           if (window.vehicleManager) {
-            const vehicle = await window.vehicleManager.getVehicleForBuilding(building.id);
+            const vehicle = await window.vehicleManager.getVehicleForBuilding(building.dbId);
             if (vehicle) {
               window.currentVehicleId = vehicle.id;
               const capacity = 20 + ((building.level - 1) * 10);

@@ -71,7 +71,7 @@ class VehicleManager {
     let vehicle = this.vehicles.find(v => v.building_id === buildingId);
     
     if (!vehicle) {
-      const building = window.structureManager.buildings.find(b => b.id === buildingId);
+      const building = window.structureManager.buildings.find(b => b.dbId === buildingId);
       if (!building) return null;
       
       // Create new vehicle if it doesn't exist yet
@@ -104,7 +104,7 @@ class VehicleManager {
     const vehicle = this.vehicles.find(v => v.id === vehicleId);
     if (!vehicle) return;
     
-    const building = window.structureManager.buildings.find(b => b.id === vehicle.building_id);
+    const building = window.structureManager.buildings.find(b => b.dbId === vehicle.building_id);
     if (!building) return;
     
     // Calculate new assignments
