@@ -208,9 +208,9 @@ class NPCManager {
   }
 
   async syncTroopsToDb() {
-    if (!window.currentUser || !window.supabase || !window.vehicleManager) return;
+    if (!window.currentUser || !window.supabaseClient || !window.vehicleManager) return;
     
-    const { error } = await window.supabase
+    const { error } = await window.supabaseClient
       .from('players')
       .update({ troop_counts: window.vehicleManager.totalTroops })
       .eq('id', window.currentUser.id);

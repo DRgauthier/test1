@@ -610,8 +610,8 @@
            return;
         }
 
-        // Only generate the initial base layout if this is truly a brand-new player who just registered
-        if (isNewPlayer && !buildingsError) {
+        // Generate the initial base layout if this is a brand-new player or if they have no buildings
+        if ((isNewPlayer || !buildingsData || buildingsData.length === 0) && !buildingsError) {
           // Initial base setup
           const hq = new Structure('HEADQUARTERS', -75, -75);
           const { data: hqData } = await window.supabaseClient
@@ -632,6 +632,48 @@
             hq.construction_started_at = hqData.construction_started_at;
           }
           structureManager.buildings = [hq];
+
+          // Add max level 1 HQ builders (2 Worker Huts)
+          const hut1 = new Structure('WORKER_HUT', 100, -75);
+          const { data: hut1Data } = await window.supabaseClient
+            .from('buildings')
+            .insert({
+              player_id: window.currentUser.id,
+              type_id: hut1.type.id,
+              level: hut1.level,
+              x: hut1.x,
+              y: hut1.y,
+              health: hut1.health
+            })
+            .select()
+            .single();
+
+          if (hut1Data) {
+            hut1.dbId = hut1Data.id;
+            hut1.construction_started_at = hut1Data.construction_started_at;
+          }
+          structureManager.buildings.push(hut1);
+
+          const hut2 = new Structure('WORKER_HUT', 100, 25);
+          const { data: hut2Data } = await window.supabaseClient
+            .from('buildings')
+            .insert({
+              player_id: window.currentUser.id,
+              type_id: hut2.type.id,
+              level: hut2.level,
+              x: hut2.x,
+              y: hut2.y,
+              health: hut2.health
+            })
+            .select()
+            .single();
+
+          if (hut2Data) {
+            hut2.dbId = hut2Data.id;
+            hut2.construction_started_at = hut2Data.construction_started_at;
+          }
+          structureManager.buildings.push(hut2);
+
           structureManager.renderBuildMenu();
 
           window.npcManager.npcs = [];
