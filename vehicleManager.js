@@ -1,7 +1,7 @@
 class VehicleManager {
   constructor() {
     this.vehicles = [];
-    this.totalTroops = { soldier: 0, medic: 0 };
+    this.totalTroops = { soldier: 0, medic: 0, juggernaut: 0 };
   }
 
   async loadVehicles() {
@@ -17,7 +17,8 @@ class VehicleManager {
     if (!playerError && playerData && playerData.troop_counts) {
       this.totalTroops = {
         soldier: playerData.troop_counts.soldier || 0,
-        medic: playerData.troop_counts.medic || 0
+        medic: playerData.troop_counts.medic || 0,
+        juggernaut: playerData.troop_counts.juggernaut || 0
       };
     }
 
@@ -41,12 +42,14 @@ class VehicleManager {
       if (vehicle.assigned_troops) {
         this.availableTroops.soldier -= (vehicle.assigned_troops.soldier || 0);
         this.availableTroops.medic -= (vehicle.assigned_troops.medic || 0);
+        this.availableTroops.juggernaut -= (vehicle.assigned_troops.juggernaut || 0);
       }
     }
     
     // Ensure we don't drop below 0 if there was an inconsistency
     this.availableTroops.soldier = Math.max(0, this.availableTroops.soldier);
     this.availableTroops.medic = Math.max(0, this.availableTroops.medic);
+    this.availableTroops.juggernaut = Math.max(0, this.availableTroops.juggernaut);
   }
 
   async saveVehicle(vehicle) {
@@ -76,7 +79,7 @@ class VehicleManager {
         building_id: buildingId,
         type: 'gunship', // Default for now
         status: 'idle',
-        assigned_troops: { soldier: 0, medic: 0 }
+        assigned_troops: { soldier: 0, medic: 0, juggernaut: 0 }
       };
       
       const { data, error } = await window.supabaseClient
@@ -97,7 +100,7 @@ class VehicleManager {
     return vehicle;
   }
   
-  async updateVehicleTroops(vehicleId, soldierDelta, medicDelta) {
+  async updateVehicleTroops(vehicleId, soldierDelta, medicDelta, juggernautDelta = 0) {
     const vehicle = this.vehicles.find(v => v.id === vehicleId);
     if (!vehicle) return;
     
@@ -122,10 +125,12 @@ class VehicleManager {
     if (soldierDelta > 0 && this.availableTroops.soldier < soldierDelta) return false;
     if (medicDelta > 0 && this.availableTroops.medic < medicDelta) return false;
     if (juggernautDelta > 0 && this.availableTroops.juggernaut < juggernautDelta) return false;
+    if (juggernautDelta > 0 && this.availableTroops.juggernaut < juggernautDelta) return false;
     
     // Update local state
     vehicle.assigned_troops.soldier = newSoldier;
     vehicle.assigned_troops.medic = newMedic;
+    vehicle.assigned_troops.juggernaut = newJuggernaut;
     vehicle.assigned_troops.juggernaut = newJuggernaut;
     
     this.updateAvailableTroops();

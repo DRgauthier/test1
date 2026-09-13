@@ -430,8 +430,8 @@
             <div style="font-size: 12px; color: #a0aec0;">Avail: <span id="vehicle-avail-soldier">0</span> | Assigned: <span id="vehicle-assigned-soldier">0</span></div>
           </div>
           <div style="display: flex; gap: 5px;">
-            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, -1, 0)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
-            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 1, 0)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, -1, 0, 0)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 1, 0, 0)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
           </div>
         </div>
 
@@ -442,8 +442,18 @@
             <div style="font-size: 12px; color: #a0aec0;">Avail: <span id="vehicle-avail-medic">0</span> | Assigned: <span id="vehicle-assigned-medic">0</span></div>
           </div>
           <div style="display: flex; gap: 5px;">
-            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, -1)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
-            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, 1)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, -1, 0)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, 1, 0)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+          <div>
+            <div style="font-weight: bold;">Juggernauts</div>
+            <div style="font-size: 12px; color: #a0aec0;">Avail: <span id="vehicle-avail-juggernaut">0</span> | Assigned: <span id="vehicle-assigned-juggernaut">0</span></div>
+          </div>
+          <div style="display: flex; gap: 5px;">
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, 0, -1)" style="background: #e53e3e; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">-</button>
+            <button onclick="window.vehicleManager.updateVehicleTroops(window.currentVehicleId, 0, 0, 1)" style="background: #48bb78; color: white; border: none; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
           </div>
         </div>
       </div>
@@ -626,6 +636,7 @@
             if (window.npcManager) {
               window.npcManager.counts.soldier = window.vehicleManager.totalTroops.soldier;
               window.npcManager.counts.medic = window.vehicleManager.totalTroops.medic;
+              window.npcManager.counts.juggernaut = window.vehicleManager.totalTroops.juggernaut;
             }
           }
         }
@@ -717,7 +728,7 @@
           structureManager.renderBuildMenu();
 
           window.npcManager.npcs = [];
-          window.npcManager.counts = { soldier: 0, medic: 0 };
+          window.npcManager.counts = { soldier: 0, medic: 0, juggernaut: 0 };
 
           structureManager.syncPlayerState();
         } else if (!buildingsError) {
@@ -736,7 +747,26 @@
           structureManager.renderBuildMenu();
 
           window.npcManager.npcs = [];
-          window.npcManager.counts = { soldier: 0, medic: 0 };
+          window.npcManager.counts = { soldier: 0, medic: 0, juggernaut: 0 };
+        }
+
+        // Spawn NPCs for the loaded counts
+        if (window.vehicleManager && window.npcManager) {
+          const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
+          if (hq) {
+             const types = ['soldier', 'medic', 'juggernaut'];
+             for (const type of types) {
+                const count = window.vehicleManager.availableTroops[type] || 0;
+                window.npcManager.counts[type] = window.vehicleManager.availableTroops[type] || 0;
+                for (let i = 0; i < count; i++) {
+                   const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
+                   const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20 - 10);
+                   if (type === 'soldier') window.npcManager.npcs.push(new Soldier(spawnX, spawnY));
+                   else if (type === 'medic') window.npcManager.npcs.push(new Medic(spawnX, spawnY));
+                   else if (type === 'juggernaut') window.npcManager.npcs.push(new Juggernaut(spawnX, spawnY));
+                }
+             }
+          }
         }
 
         structureManager.updateResourceUI();
