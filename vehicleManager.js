@@ -8,7 +8,7 @@ class VehicleManager {
     if (!window.currentUser) return;
     
     // Fetch total troops
-    const { data: playerData, error: playerError } = await window.supabase
+    const { data: playerData, error: playerError } = await window.supabaseClient
       .from('players')
       .select('troop_counts')
       .eq('id', window.currentUser.id)
@@ -22,7 +22,7 @@ class VehicleManager {
     }
 
     // Fetch vehicles
-    const { data: vehicleData, error: vehicleError } = await window.supabase
+    const { data: vehicleData, error: vehicleError } = await window.supabaseClient
       .from('vehicles')
       .select('*')
       .eq('player_id', window.currentUser.id);
@@ -52,7 +52,7 @@ class VehicleManager {
   async saveVehicle(vehicle) {
     if (!window.currentUser) return;
     
-    const { error } = await window.supabase
+    const { error } = await window.supabaseClient
       .from('vehicles')
       .upsert({
         ...vehicle,
@@ -79,7 +79,7 @@ class VehicleManager {
         assigned_troops: { soldier: 0, medic: 0 }
       };
       
-      const { data, error } = await window.supabase
+      const { data, error } = await window.supabaseClient
         .from('vehicles')
         .insert({
           ...vehicle,
