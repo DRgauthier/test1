@@ -724,7 +724,7 @@ class StructureManager {
 
     // Check if the building is a vehicle provider (like gunship pad)
     if (manageVehicleBtn) {
-      if (building.type.id === 'GUNSHIP_PAD' && !this.isBuildingUnderConstruction(building)) {
+      if (building.type.id === 'GUNSHIP' && !this.isBuildingUnderConstruction(building)) {
         manageVehicleBtn.style.display = 'block';
         manageVehicleBtn.onclick = async () => {
           menu.style.display = 'none'; // hide upgrade menu
