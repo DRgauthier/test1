@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Canvas RTS</title>
   <style>
     body {
@@ -10,6 +10,10 @@
       overflow: hidden;
       background-color: #000000;
       font-family: sans-serif;
+    }
+
+    button, [onclick] {
+      touch-action: manipulation;
     }
     
     canvas {
@@ -793,6 +797,42 @@
         toggleIcon.innerText = '▶';
       }
     }
+
+    // Universal Tap-to-Click interceptor for UI elements
+    let globalTouchStartX = 0;
+    let globalTouchStartY = 0;
+
+    document.addEventListener('touchstart', (e) => {
+      // Don't intercept canvas touches; camera.js handles them
+      if (e.target.tagName.toLowerCase() === 'canvas') return;
+      if (e.touches.length === 1) {
+        globalTouchStartX = e.touches[0].clientX;
+        globalTouchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      // Don't intercept canvas touches
+      if (e.target.tagName.toLowerCase() === 'canvas') return;
+
+      // If the target is an input or textarea, let the browser handle it normally
+      // (to bring up the keyboard, etc.)
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      if (e.changedTouches.length === 1) {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const dist = Math.hypot(touchEndX - globalTouchStartX, touchEndY - globalTouchStartY);
+
+        // If it was a tap (not a drag/scroll)
+        if (dist < 10) {
+          // Trigger the click manually
+          e.preventDefault();
+          e.target.click();
+        }
+      }
+    }, { passive: false });
   </script>
 </body>
 </html>
