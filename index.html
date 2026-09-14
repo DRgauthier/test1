@@ -318,28 +318,23 @@
       </div>
 
       <div style="background: #1a202c; padding: 10px; border-radius: 6px; border: 1px solid #4a5568;">
-        <h5 style="margin: 0 0 10px 0; color: #cbd5e0;">Physical Gunship Assault</h5>
-        <div style="display: flex; justify-content: space-between; gap: 5px; align-items: center;">
-          <label style="font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
-            Gunships: <input type="number" id="world-deploy-gunships" min="0" value="0" style="width: 40px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px;">
-          </label>
-          <label style="font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
-            Soldiers: <input type="number" id="world-deploy-s" min="0" value="0" style="width: 40px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px;">
-          </label>
-          <label style="font-size: 11px; display: flex; flex-direction: column; gap: 2px;">
-            Medics: <input type="number" id="world-deploy-m" min="0" value="0" style="width: 40px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px;">
+        <h5 style="margin: 0 0 10px 0; color: #cbd5e0;">Fleet Deployment</h5>
+
+        <div style="margin-bottom: 10px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #a0aec0;">Player Gunships</div>
+          <div id="player-gunships-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 100px; overflow-y: auto;">
+             <!-- Checkboxes injected by JS -->
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #4a5568; padding-top: 10px;">
+          <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #a0aec0;">Conscript Gunships</div>
+          <div style="font-size: 11px; margin-bottom: 5px; color: #718096;">Available Conscripts: <span id="deploy-avail-conscripts">0</span> (Stacks: <span id="deploy-avail-stacks">0</span>)</div>
+          <label style="font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
+            Deploy Conscript Gunships:
+            <input type="number" id="world-deploy-stacks" min="0" value="0" style="width: 50px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px;">
           </label>
         </div>
-      </div>
-
-      <div style="background: #1a202c; padding: 10px; border-radius: 6px; border: 1px solid #4a5568; margin-top: 10px;">
-        <h5 style="margin: 0 0 10px 0; color: #cbd5e0;">Ethereal Conscript Swarm</h5>
-        <div style="font-size: 11px; margin-bottom: 5px; color: #a0aec0;">Total Available Conscripts: <span id="deploy-avail-conscripts">0</span></div>
-        <div style="font-size: 11px; margin-bottom: 5px; color: #a0aec0;">Available Conscript Stacks: <span id="deploy-avail-stacks">0</span></div>
-        <label style="font-size: 12px; display: flex; align-items: center; justify-content: space-between;">
-          Deploy Stacks:
-          <input type="number" id="world-deploy-stacks" min="0" value="0" style="width: 50px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px;">
-        </label>
       </div>
 
       <p id="no-gunships-warning-empty" style="color: #fc8181; font-size: 13px; text-align: center; display: none; font-weight: bold; margin-top: 10px;">Not enough capacity.</p>

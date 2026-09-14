@@ -415,15 +415,67 @@ class WorldMap {
       document.getElementById('world-deploy-stacks').max = availableStacks;
       document.getElementById('world-deploy-stacks').value = 0;
 
-      const totalGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP').length;
-      const activePhysicalFleets = this.activeDeployments.reduce((sum, dep) => sum + (dep.payload.gunships || 0), 0);
-      document.getElementById('world-deploy-gunships').max = Math.max(0, totalGunships - activePhysicalFleets);
-      document.getElementById('world-deploy-gunships').value = 0;
+      // Player Gunships List Population
+      const playerGunshipsList = document.getElementById('player-gunships-list');
+      playerGunshipsList.innerHTML = ''; // Clear existing
 
-      document.getElementById('world-deploy-s').max = window.npcManager.counts.soldier;
-      document.getElementById('world-deploy-s').value = 0;
-      document.getElementById('world-deploy-m').max = window.npcManager.counts.medic;
-      document.getElementById('world-deploy-m').value = 0;
+      const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
+
+      // Sort by dbId to maintain consistent order for naming
+      allGunships.sort((a, b) => a.dbId - b.dbId);
+
+      const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
+
+      // Find which gunships are currently deployed
+      const deployedGunshipIds = new Set();
+      for (const dep of this.activeDeployments) {
+         if (dep.payload.gunship_ids) {
+            for (const id of dep.payload.gunship_ids) {
+               deployedGunshipIds.add(id);
+            }
+         }
+      }
+
+      let availableCount = 0;
+      allGunships.forEach((gunship, index) => {
+         const phonetic = index < natoAlphabet.length ? natoAlphabet[index] : `Squadron ${index + 1}`;
+         const name = `Gunship ${phonetic}`;
+
+         if (deployedGunshipIds.has(gunship.dbId)) return; // Skip deployed ones
+
+         let s = 0, m = 0, j = 0;
+         if (window.vehicleManager) {
+            const v = window.vehicleManager.vehicles.find(veh => veh.building_id === gunship.dbId);
+            if (v && v.assigned_troops) {
+               s = v.assigned_troops.soldier || 0;
+               m = v.assigned_troops.medic || 0;
+               j = v.assigned_troops.juggernaut || 0;
+            }
+         }
+
+         const label = document.createElement('label');
+         label.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 11px; color: white; background: #2d3748; padding: 6px; border-radius: 4px; border: 1px solid #718096; cursor: pointer;';
+
+         const checkbox = document.createElement('input');
+         checkbox.type = 'checkbox';
+         checkbox.value = gunship.dbId;
+         checkbox.className = 'player-gunship-checkbox';
+
+         const text = document.createElement('span');
+         text.innerText = `${name} [S:${s} M:${m} J:${j}]`;
+
+         label.appendChild(checkbox);
+         label.appendChild(text);
+         playerGunshipsList.appendChild(label);
+         availableCount++;
+      });
+
+      if (availableCount === 0) {
+         const emptyMsg = document.createElement('div');
+         emptyMsg.style.cssText = 'font-size: 11px; color: #a0aec0; font-style: italic;';
+         emptyMsg.innerText = "No available gunships.";
+         playerGunshipsList.appendChild(emptyMsg);
+      }
 
     } else if (hex.state === 'CAPTURED') {
       document.getElementById('hex-content-captured').style.display = 'block';
@@ -549,27 +601,44 @@ class WorldMap {
     if (!this.selectedHex || this.selectedHex.state !== 'NPC_BASE') return;
     if (!window.supabaseClient || !window.currentUser) return;
 
-    const sCount = parseInt(document.getElementById('world-deploy-s').value) || 0;
-    const mCount = parseInt(document.getElementById('world-deploy-m').value) || 0;
-    const juggInput = document.getElementById('world-deploy-j');
-    const jCount = juggInput ? parseInt(juggInput.value) || 0 : 0;
-    const gunshipsCount = parseInt(document.getElementById('world-deploy-gunships').value) || 0;
+    const checkboxes = document.querySelectorAll('.player-gunship-checkbox:checked');
+    const gunshipIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
     const stacksCount = parseInt(document.getElementById('world-deploy-stacks').value) || 0;
 
-    if (gunshipsCount === 0 && stacksCount === 0) {
-      return alert("You must deploy at least one gunship or conscript stack.");
+    if (gunshipIds.length === 0 && stacksCount === 0) {
+      return alert("You must deploy at least one player gunship or conscript gunship.");
     }
 
-    const maxCap = this.getHighestAvailableGunshipCapacity() || 20;
+    let sCount = 0;
+    let mCount = 0;
+    let jCount = 0;
 
-    // Validate Physical Capacity
-    if ((sCount + mCount + jCount) > (gunshipsCount * maxCap)) {
-      return alert(`Your ${gunshipsCount} gunship(s) can only carry ${gunshipsCount * maxCap} troops. You attempted to deploy ${sCount + mCount + jCount}.`);
-    }
+    // Tally and deduct troops from assigned gunships
+    if (window.vehicleManager) {
+      for (const gid of gunshipIds) {
+        const vehicle = window.vehicleManager.vehicles.find(v => v.building_id === gid);
+        if (vehicle && vehicle.assigned_troops) {
+          sCount += vehicle.assigned_troops.soldier || 0;
+          mCount += vehicle.assigned_troops.medic || 0;
+          jCount += vehicle.assigned_troops.juggernaut || 0;
 
-    // Validate Troops available
-    if (sCount > window.npcManager.counts.soldier || mCount > window.npcManager.counts.medic || jCount > window.npcManager.counts.juggernaut) {
-      return alert("You do not have enough base troops available!");
+          // Zero out assignments
+          vehicle.assigned_troops.soldier = 0;
+          vehicle.assigned_troops.medic = 0;
+          vehicle.assigned_troops.juggernaut = 0;
+          await window.vehicleManager.saveVehicle(vehicle);
+        }
+      }
+
+      // Update global total troops to reflect lost troops that are deployed
+      window.vehicleManager.totalTroops.soldier = Math.max(0, window.vehicleManager.totalTroops.soldier - sCount);
+      window.vehicleManager.totalTroops.medic = Math.max(0, window.vehicleManager.totalTroops.medic - mCount);
+      window.vehicleManager.totalTroops.juggernaut = Math.max(0, window.vehicleManager.totalTroops.juggernaut - jCount);
+      window.vehicleManager.updateAvailableTroops();
+
+      if (window.npcManager) {
+        window.npcManager.syncTroopsToDb();
+      }
     }
 
     // Remove base troops locally immediately
@@ -594,6 +663,8 @@ class WorldMap {
       }
     }
     window.npcManager.updateUI();
+
+    const maxCap = this.getHighestAvailableGunshipCapacity() || 20;
 
     // Deduct conscripts from captured tiles locally immediately
     let conscriptsToDeduct = stacksCount * maxCap;
@@ -633,10 +704,12 @@ class WorldMap {
     const arrivalTime = new Date(Date.now() + travelMs).toISOString();
 
     const payload = {
-      gunships: gunshipsCount,
+      gunships: gunshipIds.length,
+      gunship_ids: gunshipIds,
       stacks: stacksCount,
       soldiers: sCount,
-      medics: mCount
+      medics: mCount,
+      juggernauts: jCount
     };
 
     const deployment = {
@@ -695,8 +768,9 @@ class WorldMap {
         // Calculate Combat Outcome
         const maxCap = this.getHighestAvailableGunshipCapacity() || 20;
         const totalConscripts = dep.payload.stacks * maxCap;
-        // Conscripts have half stats (0.5 power). Regulars: S=1, M=1 (medics keep them alive mostly, simple math for now)
-        const attackPower = dep.payload.soldiers + dep.payload.medics + (totalConscripts * 0.5);
+        // Conscripts have half stats (0.5 power). Regulars: S=1, M=1 (medics keep them alive mostly, simple math for now). Juggernauts: J=5
+        const juggernauts = dep.payload.juggernauts || 0;
+        const attackPower = dep.payload.soldiers + dep.payload.medics + (juggernauts * 5) + (totalConscripts * 0.5);
 
         const diff = hex.difficulty || 1;
         // Base defense power based on difficulty (1-5 scales heavily)
@@ -715,7 +789,7 @@ class WorldMap {
           const garrison = {
             soldier: dep.payload.soldiers,
             medic: dep.payload.medics,
-            juggernaut: 0
+            juggernaut: juggernauts
           };
           hex.garrison_troops = garrison;
           hex.conscript_count = 0;
@@ -762,7 +836,7 @@ class WorldMap {
               origin_r: hex.r,
               target_q: homeQ,
               target_r: homeR,
-              payload: { gunships: dep.payload.gunships },
+              payload: { gunships: dep.payload.gunships, gunship_ids: dep.payload.gunship_ids },
               arrival_time: returnArrival,
               is_return_trip: true
             };
