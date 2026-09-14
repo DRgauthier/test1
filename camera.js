@@ -411,11 +411,14 @@ function initCamera(canvas) {
         window.npcManager.update([]);
         window.npcManager.draw(ctx);
       }
+
+      if (window.worldMap) window.worldMap.update();
     } else if (sceneManager.currentScene === 'WORLD') {
       // Just update game logic in background if needed
       const currentNPCCount = window.npcManager ? window.npcManager.npcs.length : 0;
       structureManager.update(currentNPCCount);
       if (window.npcManager) window.npcManager.update([]);
+      if (window.worldMap) window.worldMap.update();
 
       worldMap.draw(ctx);
     }
