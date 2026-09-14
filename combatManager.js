@@ -68,6 +68,8 @@ class CombatManager {
 
     document.getElementById('combat-return-btn').addEventListener('click', () => {
       document.getElementById('combat-summary').style.display = 'none';
+      const topBar = document.getElementById('top-bar');
+      if (topBar) topBar.style.display = 'flex';
       window.sceneManager.currentScene = 'WORLD';
       window.sceneManager.toggleScene(); // toggle twice to refresh proper UI, or just set to WORLD and trigger update
       window.sceneManager.toggleScene();
@@ -98,6 +100,8 @@ class CombatManager {
     document.getElementById('npc-menu').style.display = 'none';
     document.getElementById('hex-panel').style.display = 'none';
     document.getElementById('deployments-panel').style.display = 'none';
+    const topBar = document.getElementById('top-bar');
+    if (topBar) topBar.style.display = 'none';
 
     document.getElementById('combat-ui').style.display = 'block';
 
@@ -106,10 +110,14 @@ class CombatManager {
     this.setupGunshipsUI();
 
     // Reset camera
-    const cam = getCurrentCamera();
-    cam.x = 0;
-    cam.y = 0;
-    cam.zoom = 1;
+    if (window.getCurrentCamera) {
+      const cam = window.getCurrentCamera();
+      if (cam) {
+        cam.x = 0;
+        cam.y = 0;
+        cam.zoom = 1;
+      }
+    }
   }
 
   generateEnemyBase(hex) {
@@ -636,8 +644,10 @@ class CombatManager {
 
     // Draw target cursor if selected
     if (this.selectedGunshipId) {
-       const cam = getCurrentCamera();
-       // This would need mouse position, handled lightly via CSS cursor for now, or just leave it.
+       if (window.getCurrentCamera) {
+          const cam = window.getCurrentCamera();
+          // This would need mouse position, handled lightly via CSS cursor for now, or just leave it.
+       }
     }
   }
 }
