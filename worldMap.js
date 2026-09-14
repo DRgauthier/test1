@@ -277,7 +277,7 @@ class WorldMap {
           if (dep.payload && dep.payload.gunship_ids && window.structureManager) {
              const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
              // Sort by dbId for consistent phonetic naming
-             allGunships.sort((a, b) => a.dbId - b.dbId);
+             allGunships.sort((a, b) => a.dbId.localeCompare(b.dbId));
 
              for (const id of dep.payload.gunship_ids) {
                 const index = allGunships.findIndex(b => b.dbId === id);
@@ -507,7 +507,7 @@ class WorldMap {
       const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
 
       // Sort by dbId to maintain consistent order for naming
-      allGunships.sort((a, b) => a.dbId - b.dbId);
+      allGunships.sort((a, b) => a.dbId.localeCompare(b.dbId));
 
       const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
 
@@ -642,7 +642,7 @@ class WorldMap {
       let names = [];
       if (dep.payload && dep.payload.gunship_ids && window.structureManager) {
          const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
-         allGunships.sort((a, b) => a.dbId - b.dbId);
+         allGunships.sort((a, b) => a.dbId.localeCompare(b.dbId));
          const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
          for (const id of dep.payload.gunship_ids) {
             const index = allGunships.findIndex(b => b.dbId === id);
@@ -703,7 +703,7 @@ class WorldMap {
     if (!window.supabaseClient || !window.currentUser) return;
 
     const checkboxes = document.querySelectorAll('.player-gunship-checkbox:checked');
-    const gunshipIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const gunshipIds = Array.from(checkboxes).map(cb => cb.value);
     const stacksCount = parseInt(document.getElementById('world-deploy-stacks').value) || 0;
 
     if (gunshipIds.length === 0 && stacksCount === 0) {
