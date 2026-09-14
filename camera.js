@@ -23,7 +23,8 @@ function initCamera(canvas) {
 
   const cameras = {
     BASE: { x: 0, y: 0, zoom: 1 },
-    WORLD: { x: 0, y: 0, zoom: 0.5 }
+    WORLD: { x: 0, y: 0, zoom: 0.5 },
+    COMBAT: { x: 0, y: 0, zoom: 1 }
   };
 
   let isDragging = false;
@@ -44,6 +45,7 @@ function initCamera(canvas) {
   function getCurrentCamera() {
     return cameras[sceneManager.currentScene];
   }
+  window.getCurrentCamera = getCurrentCamera;
 
   window.getCameraCenter = function() {
     const cam = cameras['BASE'];
