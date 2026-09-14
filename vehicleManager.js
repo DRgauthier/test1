@@ -77,7 +77,7 @@ class VehicleManager {
       // Create new vehicle if it doesn't exist yet
       vehicle = {
         building_id: buildingId,
-        type: 'gunship', // Default for now
+        type: building.type.id === 'TRANSPORT_BAY' ? 'transport' : 'gunship',
         status: 'idle',
         assigned_troops: { soldier: 0, medic: 0, juggernaut: 0 }
       };
@@ -115,8 +115,17 @@ class VehicleManager {
     // Prevent negative troops
     if (newSoldier < 0 || newMedic < 0 || newJuggernaut < 0) return;
     
-    // Check against capacity
-    const capacity = 20 + ((building.level - 1) * 10);
+    // Check against capacity (transport bays will use the global max capacity when assigning, but limit to tile capacity on deploy)
+    let capacity = 20 + ((building.level - 1) * 10);
+    if (building.type.id === 'TRANSPORT_BAY') {
+      capacity = 0;
+      if (window.structureManager) {
+        // Transport bays can carry up to the maximum garrison capacity (1/4 of total gunship capacity)
+        const totalGunshipCapacity = window.structureManager.getCapacities().troop;
+        capacity = Math.floor(totalGunshipCapacity / 4);
+      }
+    }
+
     if (newSoldier + newMedic + newJuggernaut > capacity) {
         return false; // Exceeds capacity
     }
@@ -130,7 +139,6 @@ class VehicleManager {
     // Update local state
     vehicle.assigned_troops.soldier = newSoldier;
     vehicle.assigned_troops.medic = newMedic;
-    vehicle.assigned_troops.juggernaut = newJuggernaut;
     vehicle.assigned_troops.juggernaut = newJuggernaut;
     
     this.updateAvailableTroops();

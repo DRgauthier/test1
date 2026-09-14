@@ -587,9 +587,77 @@ class WorldMap {
       document.getElementById('captured-conscript-cap').innerText = maxCap;
       document.getElementById('captured-conscript-rate').innerText = hourlyRate;
 
+      let currentGarrisonTotal = 0;
       if (hex.garrison_troops) {
         document.getElementById('captured-s-count').innerText = hex.garrison_troops.soldier || 0;
         document.getElementById('captured-m-count').innerText = hex.garrison_troops.medic || 0;
+        const juggEl = document.getElementById('captured-j-count');
+        if (juggEl) juggEl.innerText = hex.garrison_troops.juggernaut || 0;
+
+        currentGarrisonTotal = (hex.garrison_troops.soldier || 0) + (hex.garrison_troops.medic || 0) + (hex.garrison_troops.juggernaut || 0);
+      }
+
+      const maxGarrison = Math.floor(window.structureManager.getCapacities().troop / 4);
+      document.getElementById('captured-garrison-total').innerText = currentGarrisonTotal;
+      document.getElementById('captured-garrison-max').innerText = maxGarrison;
+
+      // Populate Transports List for Reinforcement
+      const playerTransportsList = document.getElementById('player-transports-list');
+      if (playerTransportsList) {
+        playerTransportsList.innerHTML = ''; // Clear existing
+
+        const allTransports = window.structureManager.buildings.filter(b => b.type.id === 'TRANSPORT_BAY' && !window.structureManager.isBuildingUnderConstruction(b));
+        allTransports.sort((a, b) => a.dbId.localeCompare(b.dbId));
+
+        const deployedTransportIds = new Set();
+        if (this.activeDeployments) {
+          for (const dep of this.activeDeployments) {
+            if (dep.payload.gunship_ids) {
+              for (const id of dep.payload.gunship_ids) {
+                deployedTransportIds.add(id);
+              }
+            }
+          }
+        }
+
+        let availableCount = 0;
+        allTransports.forEach((transport, index) => {
+           const name = `Transport ${index + 1}`;
+           if (deployedTransportIds.has(transport.dbId)) return; // Skip deployed ones
+
+           let s = 0, m = 0, j = 0;
+           if (window.vehicleManager) {
+              const v = window.vehicleManager.vehicles.find(veh => veh.building_id === transport.dbId);
+              if (v && v.assigned_troops) {
+                 s = v.assigned_troops.soldier || 0;
+                 m = v.assigned_troops.medic || 0;
+                 j = v.assigned_troops.juggernaut || 0;
+              }
+           }
+
+           const label = document.createElement('label');
+           label.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 11px; color: white; background: #2d3748; padding: 6px; border-radius: 4px; border: 1px solid #718096; cursor: pointer;';
+
+           const checkbox = document.createElement('input');
+           checkbox.type = 'checkbox';
+           checkbox.value = transport.dbId;
+           checkbox.className = 'player-transport-checkbox';
+
+           const text = document.createElement('span');
+           text.innerText = `${name} [S:${s} M:${m} J:${j}]`;
+
+           label.appendChild(checkbox);
+           label.appendChild(text);
+           playerTransportsList.appendChild(label);
+           availableCount++;
+        });
+
+        if (availableCount === 0) {
+           const emptyMsg = document.createElement('div');
+           emptyMsg.style.cssText = 'font-size: 11px; color: #a0aec0; font-style: italic;';
+           emptyMsg.innerText = "No available transports.";
+           playerTransportsList.appendChild(emptyMsg);
+        }
       }
     }
   }
@@ -627,12 +695,20 @@ class WorldMap {
       }
 
       let title = dep.is_return_trip ? 'Return Trip' : 'Assault Fleet';
-      let payloadText = '';
-      if (dep.payload.stacks > 0) {
-        payloadText += `${dep.payload.stacks}x Conscript Stacks<br>`;
+      if (dep.payload && (dep.payload.type === 'REINFORCE' || dep.payload.type === 'REINFORCE_RETURN')) {
+         title = dep.is_return_trip ? 'Transport Return' : 'Reinforcements';
       }
-      if (dep.payload.gunships > 0) {
-        payloadText += `${dep.payload.gunships}x Gunships (S:${dep.payload.soldiers} M:${dep.payload.medics})<br>`;
+
+      let payloadText = '';
+      if (dep.payload && dep.payload.type === 'REINFORCE') {
+        payloadText = `Troops: S:${dep.payload.troops.soldier} M:${dep.payload.troops.medic} J:${dep.payload.troops.juggernaut}`;
+      } else {
+        if (dep.payload.stacks > 0) {
+          payloadText += `${dep.payload.stacks}x Conscript Stacks<br>`;
+        }
+        if (dep.payload.gunships > 0) {
+          payloadText += `${dep.payload.gunships}x Gunships (S:${dep.payload.soldiers} M:${dep.payload.medics})<br>`;
+        }
       }
       if (dep.is_return_trip) {
         payloadText = 'Empty';
@@ -641,24 +717,39 @@ class WorldMap {
       // Get phonetic names for UI list
       let names = [];
       if (dep.payload && dep.payload.gunship_ids && window.structureManager) {
-         const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
-         allGunships.sort((a, b) => a.dbId.localeCompare(b.dbId));
-         const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
-         for (const id of dep.payload.gunship_ids) {
-            const index = allGunships.findIndex(b => b.dbId === id);
-            if (index !== -1) {
-                names.push(index < natoAlphabet.length ? natoAlphabet[index] : `S${index + 1}`);
-            }
+         if (dep.payload.type === 'REINFORCE' || dep.payload.type === 'REINFORCE_RETURN') {
+             const allTransports = window.structureManager.buildings.filter(b => b.type.id === 'TRANSPORT_BAY' && !window.structureManager.isBuildingUnderConstruction(b));
+             allTransports.sort((a, b) => a.dbId.localeCompare(b.dbId));
+             for (const id of dep.payload.gunship_ids) {
+                const index = allTransports.findIndex(b => b.dbId === id);
+                if (index !== -1) {
+                    names.push(`T${index + 1}`);
+                }
+             }
+         } else {
+             const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
+             allGunships.sort((a, b) => a.dbId.localeCompare(b.dbId));
+             const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
+             for (const id of dep.payload.gunship_ids) {
+                const index = allGunships.findIndex(b => b.dbId === id);
+                if (index !== -1) {
+                    names.push(index < natoAlphabet.length ? natoAlphabet[index] : `S${index + 1}`);
+                }
+             }
          }
       }
 
       const namesStr = names.length > 0 ? ` (${names.join(', ')})` : '';
+      let colorClass = dep.is_return_trip ? '#ecc94b' : '#e53e3e';
+      if (dep.payload && (dep.payload.type === 'REINFORCE' || dep.payload.type === 'REINFORCE_RETURN')) {
+          colorClass = dep.is_return_trip ? '#ecc94b' : '#3182ce';
+      }
 
       const item = document.createElement('div');
-      item.style.cssText = `background: #1a202c; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid ${dep.is_return_trip ? '#ecc94b' : '#e53e3e'}; font-family: sans-serif;`;
+      item.style.cssText = `background: #1a202c; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid ${colorClass}; font-family: sans-serif;`;
       item.innerHTML = `
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-          <b style="color: ${dep.is_return_trip ? '#ecc94b' : '#fc8181'}; font-size: 13px;">${title}${namesStr}</b>
+          <b style="color: ${colorClass}; font-size: 13px;">${title}${namesStr}</b>
           <span style="color: #a0aec0; font-size: 12px; font-family: monospace;">${timeString}</span>
         </div>
         <div style="font-size: 11px; color: #cbd5e0; margin-bottom: 4px;">
@@ -840,6 +931,131 @@ class WorldMap {
     this.closeDeployMenu();
   }
 
+  async deployReinforce() {
+    if (!this.selectedHex || this.selectedHex.state !== 'CAPTURED') return;
+    if (!window.supabaseClient || !window.currentUser) return;
+
+    const checkboxes = document.querySelectorAll('.player-transport-checkbox:checked');
+    const transportIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (transportIds.length === 0) {
+      return alert("You must deploy at least one transport to reinforce.");
+    }
+
+    let sCount = 0;
+    let mCount = 0;
+    let jCount = 0;
+
+    // Tally troops without saving yet
+    if (window.vehicleManager) {
+      for (const tid of transportIds) {
+        const vehicle = window.vehicleManager.vehicles.find(v => v.building_id === tid);
+        if (vehicle && vehicle.assigned_troops) {
+          sCount += vehicle.assigned_troops.soldier || 0;
+          mCount += vehicle.assigned_troops.medic || 0;
+          jCount += vehicle.assigned_troops.juggernaut || 0;
+        }
+      }
+    }
+
+    // Check if limits exceeded
+    let currentTotal = 0;
+    if (this.selectedHex.garrison_troops) {
+       currentTotal = (this.selectedHex.garrison_troops.soldier || 0) + (this.selectedHex.garrison_troops.medic || 0) + (this.selectedHex.garrison_troops.juggernaut || 0);
+    }
+    const maxGarrison = Math.floor(window.structureManager.getCapacities().troop / 4);
+    if (currentTotal + sCount + mCount + jCount > maxGarrison) {
+      alert("Error: This deployment exceeds the maximum garrison limit! Cannot send.");
+      return;
+    }
+
+    if (window.vehicleManager) {
+      for (const tid of transportIds) {
+        const vehicle = window.vehicleManager.vehicles.find(v => v.building_id === tid);
+        if (vehicle && vehicle.assigned_troops) {
+          vehicle.assigned_troops.soldier = 0;
+          vehicle.assigned_troops.medic = 0;
+          vehicle.assigned_troops.juggernaut = 0;
+          await window.vehicleManager.saveVehicle(vehicle);
+        }
+      }
+
+      // Permanently deduct from global total pool
+      window.vehicleManager.totalTroops.soldier = Math.max(0, window.vehicleManager.totalTroops.soldier - sCount);
+      window.vehicleManager.totalTroops.medic = Math.max(0, window.vehicleManager.totalTroops.medic - mCount);
+      window.vehicleManager.totalTroops.juggernaut = Math.max(0, window.vehicleManager.totalTroops.juggernaut - jCount);
+      window.vehicleManager.updateAvailableTroops();
+    }
+
+    // Remove base troops locally immediately for visual consistency
+    let removedS = 0, removedM = 0, jRemoved = 0;
+    for (let i = window.npcManager.npcs.length - 1; i >= 0; i--) {
+      const npc = window.npcManager.npcs[i];
+      if (npc.type.id === 'JUGGERNAUT' && jRemoved < jCount) {
+        window.npcManager.npcs.splice(i, 1);
+        window.npcManager.counts.juggernaut--;
+        jRemoved++;
+        continue;
+      }
+      if (removedS < sCount && npc.type.id === 'SOLDIER') {
+        window.npcManager.npcs.splice(i, 1);
+        window.npcManager.counts.soldier--;
+        removedS++;
+      } else if (removedM < mCount && npc.type.id === 'MEDIC') {
+        window.npcManager.npcs.splice(i, 1);
+        window.npcManager.counts.medic--;
+        removedM++;
+      }
+    }
+    window.npcManager.updateUI();
+
+    if (window.npcManager) {
+      window.npcManager.syncTroopsToDb();
+    }
+
+    // Calculate Arrival Time
+    const homeQ = window.currentUser.hex_x;
+    const homeR = window.currentUser.hex_y;
+    const dQ = Math.abs(homeQ - this.selectedHex.q);
+    const dR = Math.abs(homeR - this.selectedHex.r);
+    const dS = Math.abs(-homeQ - homeR - (-this.selectedHex.q - this.selectedHex.r));
+    const dist = Math.max(dQ, dR, dS);
+
+    const travelMins = dist * 10;
+    const arrivalTime = new Date(Date.now() + travelMins * 60000);
+
+    const deployment = {
+      player_id: window.currentUser.id,
+      origin_q: homeQ,
+      origin_r: homeR,
+      target_q: this.selectedHex.q,
+      target_r: this.selectedHex.r,
+      is_return_trip: false,
+      arrival_time: arrivalTime.toISOString(),
+      payload: {
+        type: 'REINFORCE',
+        gunship_ids: transportIds, // using this field generically to lock transports
+        troops: { soldier: sCount, medic: mCount, juggernaut: jCount }
+      }
+    };
+
+    const { data, error } = await window.supabaseClient
+      .from('deployments')
+      .insert(deployment)
+      .select()
+      .single();
+
+    if (!error && data) {
+      if (!this.activeDeployments) this.activeDeployments = [];
+      this.activeDeployments.push(data);
+      console.log(`Reinforcement transport deployed to [${this.selectedHex.q}, ${this.selectedHex.r}]`);
+    } else {
+      console.error("Error creating reinforce deployment", error);
+    }
+
+    this.closeDeployMenu();
+  }
+
   async resolveDeployments() {
     if (!this.activeDeployments || !window.supabaseClient || !window.currentUser) return;
 
@@ -859,6 +1075,64 @@ class WorldMap {
           console.log(`Gunships returned from [${dep.origin_q}, ${dep.origin_r}]`);
           // Gunships are physical buildings at home base, they just 'become available' again
           // implicitly because the active deployment is gone.
+          continue;
+        }
+
+        if (dep.payload && dep.payload.type === 'REINFORCE') {
+          // It's a reinforcement arriving at captured target
+          const hex = this.hexes.find(h => h.q === dep.target_q && h.r === dep.target_r);
+          if (hex && hex.state === 'CAPTURED') {
+            console.log(`Reinforcements arrived at [${hex.q}, ${hex.r}]`);
+
+            // Add troops to garrison (capped)
+            if (!hex.garrison_troops) hex.garrison_troops = {soldier: 0, medic: 0, juggernaut: 0};
+
+            hex.garrison_troops.soldier = (hex.garrison_troops.soldier || 0) + (dep.payload.troops.soldier || 0);
+            hex.garrison_troops.medic = (hex.garrison_troops.medic || 0) + (dep.payload.troops.medic || 0);
+            hex.garrison_troops.juggernaut = (hex.garrison_troops.juggernaut || 0) + (dep.payload.troops.juggernaut || 0);
+
+            const currentTotal = hex.garrison_troops.soldier + hex.garrison_troops.medic + hex.garrison_troops.juggernaut;
+            const maxGarrison = Math.floor(window.structureManager.getCapacities().troop / 4);
+
+            if (currentTotal > maxGarrison) {
+              // Discard excess
+              let excess = currentTotal - maxGarrison;
+              while(excess > 0 && (hex.garrison_troops.soldier > 0 || hex.garrison_troops.medic > 0 || hex.garrison_troops.juggernaut > 0)) {
+                 if (hex.garrison_troops.soldier > 0) { hex.garrison_troops.soldier--; excess--; }
+                 else if (hex.garrison_troops.medic > 0) { hex.garrison_troops.medic--; excess--; }
+                 else if (hex.garrison_troops.juggernaut > 0) { hex.garrison_troops.juggernaut--; excess--; }
+              }
+            }
+
+            // Sync to supabase captured_tiles
+            const ct = this.capturedTiles.find(t => t.hex_q === hex.q && t.hex_r === hex.r);
+            if (ct) {
+               ct.garrison_troops = hex.garrison_troops;
+               window.supabaseClient.from('captured_tiles').update({ garrison_troops: hex.garrison_troops }).eq('id', ct.id).then();
+            }
+          }
+
+          // Generate Return Trip for Transports
+          const dist = Math.max(Math.abs(dep.origin_q - dep.target_q), Math.abs(dep.origin_r - dep.target_r), Math.abs(-dep.origin_q - dep.origin_r - (-dep.target_q - dep.target_r)));
+          const travelMins = dist * 10;
+          const returnArrival = new Date(Date.now() + travelMins * 60000);
+
+          const returnDep = {
+            player_id: dep.player_id,
+            origin_q: dep.target_q,
+            origin_r: dep.target_r,
+            target_q: dep.origin_q,
+            target_r: dep.origin_r,
+            is_return_trip: true,
+            arrival_time: returnArrival.toISOString(),
+            payload: { type: 'REINFORCE_RETURN', gunship_ids: dep.payload.gunship_ids }
+          };
+
+          const { data } = await window.supabaseClient.from('deployments').insert(returnDep).select().single();
+          if (data) {
+             this.activeDeployments.push(data);
+          }
+
           continue;
         }
 

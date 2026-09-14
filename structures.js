@@ -6,6 +6,7 @@ const BUILDING_TYPES = {
   HEAVY_FACTORY: { id: 'HEAVY_FACTORY', name: 'Heavy Factory', width: 120, height: 120, color: '#4a4a4a', cost: { steel: 300, oil: 150 }, caps: {} },
   SUPPLY_DEPOT: { id: 'SUPPLY_DEPOT', name: 'Supply Depot', width: 50, height: 50, color: '#48bb78', cost: { steel: 100, oil: 0 } },
   GUNSHIP: { id: 'GUNSHIP', name: 'Gunship Pad', width: 120, height: 120, color: '#4a5568', cost: { steel: 400, oil: 0 }, caps: {} },
+  TRANSPORT_BAY: { id: 'TRANSPORT_BAY', name: 'Transport Bay', width: 120, height: 120, color: '#2b6cb0', cost: { steel: 350, oil: 100 }, caps: {} },
   TURRET: { id: 'TURRET', name: 'Defense Turret', width: 50, height: 50, color: '#ecc94b', cost: { steel: 100, oil: 0 } },
   WORKER_HUT: { id: 'WORKER_HUT', name: 'Worker Hut', width: 80, height: 80, color: '#ed8936', cost: { steel: 70, oil: 0 }, caps: {} }, // caps: { worker: 8 } replaced by global builder mechanic
   MEDIC_STATION: { id: 'MEDIC_STATION', name: 'Medic Station', width: 80, height: 80, color: '#fc8181', cost: { steel: 100, oil: 50 }, caps: {} },
@@ -30,7 +31,8 @@ const MAX_BUILDINGS_PER_HQ_LEVEL = {
   HEAVY_FACTORY: [0, 1, 2, 2, 3],
   TURRET:        [2, 4, 6, 8, 10],
   MEDIC_STATION: [1, 1, 2, 2, 3],
-  GUNSHIP:       [2, 2, 3, 3, 4]
+  GUNSHIP:       [2, 2, 3, 3, 4],
+  TRANSPORT_BAY: [1, 1, 1, 1, 2]
 };
 
 
@@ -116,6 +118,7 @@ class Structure {
         break;
         
       case 'GUNSHIP':
+      case 'TRANSPORT_BAY':
         ctx.beginPath();
         ctx.arc(w/2, h/2, w/2 - 15, 0, Math.PI * 2);
         ctx.stroke();
@@ -227,7 +230,7 @@ class Structure {
     }
 
     // Draw deployment timer for Gunships
-    if (this.type.id === 'GUNSHIP' && window.worldMap && window.worldMap.activeDeployments && this.dbId && !window.structureManager.isBuildingUnderConstruction(this)) {
+    if ((this.type.id === 'GUNSHIP' || this.type.id === 'TRANSPORT_BAY') && window.worldMap && window.worldMap.activeDeployments && this.dbId && !window.structureManager.isBuildingUnderConstruction(this)) {
       const activeDep = window.worldMap.activeDeployments.find(dep => dep.payload && dep.payload.gunship_ids && dep.payload.gunship_ids.includes(this.dbId));
       if (activeDep) {
         const now = new Date();
@@ -362,6 +365,7 @@ class StructureManager {
       'BARRACKS',
       'HEAVY_FACTORY',
       'GUNSHIP',
+      'TRANSPORT_BAY',
       'SUPPLY_DEPOT',
       'TURRET',
       'WORKER_HUT',
@@ -813,18 +817,28 @@ class StructureManager {
 
     title.innerText = `${building.type.name} (Lv. ${building.level})`;
 
-    // Check if the building is a vehicle provider (like gunship pad)
+    // Check if the building is a vehicle provider (like gunship pad or transport bay)
     if (manageVehicleBtn) {
-      if (building.type.id === 'GUNSHIP' && !this.isBuildingUnderConstruction(building)) {
+      if ((building.type.id === 'GUNSHIP' || building.type.id === 'TRANSPORT_BAY') && !this.isBuildingUnderConstruction(building)) {
         manageVehicleBtn.style.display = 'block';
+        manageVehicleBtn.innerText = building.type.id === 'GUNSHIP' ? 'Manage Gunship' : 'Manage Transport';
         manageVehicleBtn.onclick = async () => {
           menu.style.display = 'none'; // hide upgrade menu
           if (window.vehicleManager) {
             const vehicle = await window.vehicleManager.getVehicleForBuilding(building.dbId);
             if (vehicle) {
               window.currentVehicleId = vehicle.id;
-              const capacity = 20 + ((building.level - 1) * 10);
+              let capacity = 20 + ((building.level - 1) * 10);
+              if (building.type.id === 'TRANSPORT_BAY') {
+                capacity = Math.floor(this.getCapacities().troop / 4);
+              }
               window.updateVehicleMenuUI(vehicle, capacity);
+
+              const titleEl = document.getElementById('vehicle-management-title');
+              if (titleEl) {
+                titleEl.innerText = building.type.id === 'GUNSHIP' ? 'Gunship Management' : 'Transport Management';
+              }
+
               document.getElementById('vehicle-management-modal').style.display = 'flex';
             }
           }
