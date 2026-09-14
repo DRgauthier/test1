@@ -624,6 +624,15 @@
         }
 
         if (player) {
+          if (player.hex_x == null || player.hex_y == null) {
+            player.hex_x = Math.floor(Math.random() * 20);
+            player.hex_y = Math.floor(Math.random() * 20);
+            await window.supabaseClient
+              .from('players')
+              .update({ hex_x: player.hex_x, hex_y: player.hex_y })
+              .eq('id', player.id);
+          }
+
           window.currentUser.hex_x = player.hex_x;
           window.currentUser.hex_y = player.hex_y;
 
@@ -640,7 +649,7 @@
           }
         }
 
-        window.worldMap.fetchGameData();
+        await window.worldMap.fetchGameData();
 
         // Fetch buildings
         const { data: buildingsData, error: buildingsError } = await window.supabaseClient
