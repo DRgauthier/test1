@@ -377,14 +377,10 @@ class NPCManager {
 
       const btn = document.getElementById(`btn-${typeKey}`);
       if (btn) {
-        // Also check if they have the required building
-        const hasReqBuilding = this.structureManager.buildings.some(b =>
-          b.type.id === typeObj.reqBuilding || b.type.id === 'HEADQUARTERS'
+        // Check if they have the required building and it's not under construction
+        const hasStrictReqBuilding = this.structureManager.buildings.some(b =>
+          b.type.id === typeObj.reqBuilding && !this.structureManager.isBuildingUnderConstruction(b)
         );
-        // Special case: Juggernauts require Heavy Factory explicitly, headquarters cannot substitute
-        const hasStrictReqBuilding = typeKey === 'juggernaut'
-          ? this.structureManager.buildings.some(b => b.type.id === typeObj.reqBuilding)
-          : hasReqBuilding;
 
         if (!hasStrictReqBuilding) {
            btn.disabled = true;
@@ -428,7 +424,7 @@ class NPCManager {
     if (!this.structureManager.canAfford(typeObj.cost)) return;
 
     let validBuildings = this.structureManager.buildings.filter(b => 
-      b.type.id === typeObj.reqBuilding || (typeKey !== 'juggernaut' && b.type.id === 'HEADQUARTERS')
+      b.type.id === typeObj.reqBuilding && !this.structureManager.isBuildingUnderConstruction(b)
     );
     if (validBuildings.length === 0) return;
 
