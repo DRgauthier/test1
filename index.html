@@ -750,10 +750,30 @@
         if (window.vehicleManager && window.npcManager) {
           const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
           if (hq) {
+             let deployedTroops = { soldier: 0, medic: 0, juggernaut: 0 };
+             if (window.worldMap && window.worldMap.activeDeployments) {
+                const deployedGunshipIds = new Set();
+                for (const dep of window.worldMap.activeDeployments) {
+                   if (dep.payload && dep.payload.gunship_ids) {
+                      for (const id of dep.payload.gunship_ids) {
+                         deployedGunshipIds.add(id);
+                      }
+                   }
+                }
+                for (const v of window.vehicleManager.vehicles) {
+                   if (v.building_id && deployedGunshipIds.has(v.building_id) && v.assigned_troops) {
+                      deployedTroops.soldier += (v.assigned_troops.soldier || 0);
+                      deployedTroops.medic += (v.assigned_troops.medic || 0);
+                      deployedTroops.juggernaut += (v.assigned_troops.juggernaut || 0);
+                   }
+                }
+             }
+
              const types = ['soldier', 'medic', 'juggernaut'];
              for (const type of types) {
-                const count = window.vehicleManager.availableTroops[type] || 0;
-                window.npcManager.counts[type] = window.vehicleManager.availableTroops[type] || 0;
+                const total = window.vehicleManager.totalTroops[type] || 0;
+                const deployed = deployedTroops[type] || 0;
+                const count = Math.max(0, total - deployed);
                 for (let i = 0; i < count; i++) {
                    const spawnX = hq.x + hq.type.width / 2 + (Math.random() * 40 - 20);
                    const spawnY = hq.y + hq.type.height + 20 + (Math.random() * 20 - 10);
@@ -773,6 +793,9 @@
     window.addEventListener('beforeunload', () => {
       if (window.structureManager) {
         window.structureManager.syncPlayerState();
+      }
+      if (window.npcManager) {
+        window.npcManager.syncTroopsToDb();
       }
     });
 
