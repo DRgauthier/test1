@@ -225,6 +225,70 @@ class Structure {
       ctx.lineWidth = 1;
       ctx.strokeRect(this.x, barY, this.type.width, barHeight);
     }
+
+    // Draw deployment timer for Gunships
+    if (this.type.id === 'GUNSHIP' && window.worldMap && window.worldMap.activeDeployments && this.dbId && !window.structureManager.isBuildingUnderConstruction(this)) {
+      const activeDep = window.worldMap.activeDeployments.find(dep => dep.payload && dep.payload.gunship_ids && dep.payload.gunship_ids.includes(this.dbId));
+      if (activeDep) {
+        const now = new Date();
+        const arrival = new Date(activeDep.arrival_time);
+
+        // Calculate total travel time based on distance
+        let totalTravelMs = 10 * 60 * 1000; // default fallback 10 mins
+        if (window.currentUser) {
+           const homeQ = window.currentUser.hex_x;
+           const homeR = window.currentUser.hex_y;
+           let targetQ = activeDep.target_q;
+           let targetR = activeDep.target_r;
+
+           if (activeDep.is_return_trip) {
+               targetQ = activeDep.origin_q;
+               targetR = activeDep.origin_r;
+           }
+
+           const dQ = Math.abs(homeQ - targetQ);
+           const dR = Math.abs(homeR - targetR);
+           const dS = Math.abs(-homeQ - homeR - (-targetQ - targetR));
+           const dist = Math.max(dQ, dR, dS);
+           totalTravelMs = dist * 10 * 60 * 1000;
+           if (totalTravelMs === 0) totalTravelMs = 1; // avoid divide by zero
+        }
+
+        const remainingMs = arrival - now;
+        if (remainingMs > 0) {
+          const progress = Math.max(0, Math.min(1, 1 - (remainingMs / totalTravelMs)));
+          const barW = this.type.width * 0.8;
+          const barH = 6;
+          const barX = this.x + (this.type.width - barW) / 2;
+          const barYOffset = this.health < this.maxHealth ? 24 : 12; // stack above health bar if present
+          const barY = this.y - barYOffset;
+
+          // Draw progress bar background
+          ctx.fillStyle = '#2d3748';
+          ctx.fillRect(barX, barY, barW, barH);
+
+          // Draw progress fill (yellow for returning, red for attacking)
+          ctx.fillStyle = activeDep.is_return_trip ? '#ecc94b' : '#e53e3e';
+          ctx.fillRect(barX, barY, barW * progress, barH);
+
+          ctx.strokeStyle = '#1a202c';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(barX, barY, barW, barH);
+
+          // Draw time text
+          const remainingSecs = Math.floor(remainingMs / 1000);
+          const mins = Math.floor(remainingSecs / 60);
+          const secs = remainingSecs % 60;
+          const timeString = `${mins}m ${secs}s`;
+
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(timeString, this.x + this.type.width / 2, barY - 6);
+          ctx.textAlign = 'left'; // reset
+        }
+      }
+    }
   }
 }
 

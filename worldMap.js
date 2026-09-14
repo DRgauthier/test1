@@ -252,6 +252,86 @@ class WorldMap {
         }
       }
     }
+
+    // Draw deployment lines
+    if (this.activeDeployments && window.currentUser) {
+      const now = new Date();
+      const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
+
+      for (const dep of this.activeDeployments) {
+        const originHex = this.hexes.find(h => h.q === dep.origin_q && h.r === dep.origin_r);
+        const targetHex = this.hexes.find(h => h.q === dep.target_q && h.r === dep.target_r);
+
+        if (originHex && targetHex) {
+          ctx.beginPath();
+          ctx.moveTo(originHex.x, originHex.y);
+          ctx.lineTo(targetHex.x, targetHex.y);
+          ctx.strokeStyle = dep.is_return_trip ? 'rgba(236, 201, 75, 0.8)' : 'rgba(229, 62, 62, 0.8)'; // Yellow for return, Red for assault
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Get gunship phonetic names
+          let names = [];
+          if (dep.payload && dep.payload.gunship_ids && window.structureManager) {
+             const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
+             // Sort by dbId for consistent phonetic naming
+             allGunships.sort((a, b) => a.dbId - b.dbId);
+
+             for (const id of dep.payload.gunship_ids) {
+                const index = allGunships.findIndex(b => b.dbId === id);
+                if (index !== -1) {
+                    names.push(index < natoAlphabet.length ? natoAlphabet[index] : `S${index + 1}`);
+                }
+             }
+          }
+
+          if (dep.payload && dep.payload.stacks > 0) {
+              names.push('Conscript');
+          }
+
+          const label = names.length > 0 ? `(${names.join(', ')})` : '(Fleet)';
+
+          // Draw text in middle of line
+          const midX = (originHex.x + targetHex.x) / 2;
+          const midY = (originHex.y + targetHex.y) / 2;
+
+          // Calculate total travel time based on distance
+          const dQ = Math.abs(dep.origin_q - dep.target_q);
+          const dR = Math.abs(dep.origin_r - dep.target_r);
+          const dS = Math.abs(-dep.origin_q - dep.origin_r - (-dep.target_q - dep.target_r));
+          const dist = Math.max(dQ, dR, dS);
+          const totalTravelMs = dist * 10 * 60 * 1000;
+
+          const arrival = new Date(dep.arrival_time);
+          const remainingMs = arrival - now;
+          let timeString = 'Arriving...';
+
+          if (remainingMs > 0) {
+             const remainingSecs = Math.floor(remainingMs / 1000);
+             const mins = Math.floor(remainingSecs / 60);
+             const secs = remainingSecs % 60;
+             timeString = `${mins}m ${secs}s`;
+
+             // Optionally calculate ship position along line based on progress
+             // let progress = 1 - (remainingMs / totalTravelMs);
+             // let shipX = originHex.x + (targetHex.x - originHex.x) * progress;
+             // let shipY = originHex.y + (targetHex.y - originHex.y) * progress;
+          }
+
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, midX, midY - 10);
+
+          // Draw time remaining below label
+          ctx.fillStyle = '#cbd5e0';
+          ctx.font = '10px sans-serif';
+          ctx.fillText(timeString, midX, midY + 4);
+        }
+      }
+    }
   }
 
 
@@ -558,11 +638,27 @@ class WorldMap {
         payloadText = 'Empty';
       }
 
+      // Get phonetic names for UI list
+      let names = [];
+      if (dep.payload && dep.payload.gunship_ids && window.structureManager) {
+         const allGunships = window.structureManager.buildings.filter(b => b.type.id === 'GUNSHIP' && !window.structureManager.isBuildingUnderConstruction(b));
+         allGunships.sort((a, b) => a.dbId - b.dbId);
+         const natoAlphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu"];
+         for (const id of dep.payload.gunship_ids) {
+            const index = allGunships.findIndex(b => b.dbId === id);
+            if (index !== -1) {
+                names.push(index < natoAlphabet.length ? natoAlphabet[index] : `S${index + 1}`);
+            }
+         }
+      }
+
+      const namesStr = names.length > 0 ? ` (${names.join(', ')})` : '';
+
       const item = document.createElement('div');
       item.style.cssText = `background: #1a202c; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid ${dep.is_return_trip ? '#ecc94b' : '#e53e3e'}; font-family: sans-serif;`;
       item.innerHTML = `
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-          <b style="color: ${dep.is_return_trip ? '#ecc94b' : '#fc8181'}; font-size: 13px;">${title}</b>
+          <b style="color: ${dep.is_return_trip ? '#ecc94b' : '#fc8181'}; font-size: 13px;">${title}${namesStr}</b>
           <span style="color: #a0aec0; font-size: 12px; font-family: monospace;">${timeString}</span>
         </div>
         <div style="font-size: 11px; color: #cbd5e0; margin-bottom: 4px;">

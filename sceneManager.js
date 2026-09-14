@@ -25,6 +25,12 @@ class SceneManager {
       if (upgradeMenu) {
         upgradeMenu.style.display = 'none';
       }
+
+      const deployPanel = document.getElementById('deployments-panel');
+      if (deployPanel && window.worldMap && window.worldMap.activeDeployments && window.worldMap.activeDeployments.length > 0) {
+        deployPanel.style.display = 'block';
+      }
+
     } else {
       this.currentScene = 'BASE';
       // Show base building UI
@@ -41,6 +47,11 @@ class SceneManager {
       const hexPanel = document.getElementById('hex-panel');
       if (hexPanel) {
         hexPanel.style.display = 'none';
+      }
+
+      const deployPanel = document.getElementById('deployments-panel');
+      if (deployPanel) {
+        deployPanel.style.display = 'none';
       }
     }
 
