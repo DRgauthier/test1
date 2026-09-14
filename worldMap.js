@@ -394,6 +394,11 @@ class WorldMap {
       const travelMins = dist * 10;
       document.getElementById('deploy-npc-time').innerText = `${travelMins} mins`;
 
+      const diffValue = hex.difficulty || 1;
+      const baseRate = diffValue * 10;
+      const connectedRate = Math.floor(baseRate * 1.5);
+      document.getElementById('deploy-npc-reward').innerText = `Yields ${baseRate} conscripts/hr (${connectedRate}/hr if connected to homebase)`;
+
       document.getElementById('deploy-avail-s').innerText = window.npcManager.counts.soldier;
       document.getElementById('deploy-avail-m').innerText = window.npcManager.counts.medic;
       const juggEl = document.getElementById('deploy-avail-j');
