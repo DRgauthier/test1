@@ -206,8 +206,10 @@ function initCamera(canvas) {
           }
         }
       }
-    } else {
+    } else if (sceneManager.currentScene === 'WORLD') {
       worldMap.handleClick(worldX, worldY);
+    } else if (sceneManager.currentScene === 'COMBAT' && window.combatManager) {
+      window.combatManager.handleClick(worldX, worldY);
     }
   }
 
@@ -421,6 +423,17 @@ function initCamera(canvas) {
       if (window.worldMap) window.worldMap.update();
 
       worldMap.draw(ctx);
+    } else if (sceneManager.currentScene === 'COMBAT') {
+      // Update background processes
+      const currentNPCCount = window.npcManager ? window.npcManager.npcs.length : 0;
+      structureManager.update(currentNPCCount);
+      if (window.npcManager) window.npcManager.update([]);
+      if (window.worldMap) window.worldMap.update();
+
+      if (window.combatManager) {
+        window.combatManager.update();
+        window.combatManager.draw(ctx);
+      }
     }
 
 

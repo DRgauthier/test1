@@ -493,6 +493,7 @@
   </div>
 
   <script src="sceneManager.js"></script>
+  <script src="combatManager.js"></script>
   <script src="worldMap.js"></script>
   <script src="structures.js"></script>
   <script src="npc.js"></script>
@@ -571,6 +572,7 @@
       }
 
       window.sceneManager = new SceneManager();
+      window.combatManager = new CombatManager();
       window.worldMap = new WorldMap(20, 20, seed);
       console.log("worldMap instantiated:", window.worldMap);
 
@@ -584,7 +586,6 @@
 
       if (window.supabaseClient && window.currentUser) {
         console.log('[DEBUG] onAuthSuccess: starting initialization for user', window.currentUser.id);
-        window.worldMap.fetchGameData();
         // Ensure player record exists
         if (!window.supabaseClient) return; let { data: player, error: playerError } = await window.supabaseClient
           .from('players')
@@ -638,6 +639,8 @@
             }
           }
         }
+
+        window.worldMap.fetchGameData();
 
         // Fetch buildings
         const { data: buildingsData, error: buildingsError } = await window.supabaseClient

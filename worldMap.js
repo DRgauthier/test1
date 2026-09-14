@@ -866,95 +866,9 @@ class WorldMap {
         const hex = this.hexes.find(h => h.q === dep.target_q && h.r === dep.target_r);
         if (!hex || hex.state === 'CAPTURED') continue; // If already captured somehow, ignore
 
-        // Calculate Combat Outcome
-        const maxCap = this.getHighestAvailableGunshipCapacity() || 20;
-        const totalConscripts = dep.payload.stacks * maxCap;
-        // Conscripts have half stats (0.5 power). Regulars: S=1, M=1 (medics keep them alive mostly, simple math for now). Juggernauts: J=5
-        const juggernauts = dep.payload.juggernauts || 0;
-        const attackPower = dep.payload.soldiers + dep.payload.medics + (juggernauts * 5) + (totalConscripts * 0.5);
-
-        const diff = hex.difficulty || 1;
-        // Base defense power based on difficulty (1-5 scales heavily)
-        const defPower = diff * 15;
-
-        const successChance = Math.min(0.95, attackPower / (defPower || 1));
-        const success = Math.random() < successChance;
-
-        console.log(`Attack Resolution at [${hex.q}, ${hex.r}] - Power: ${attackPower} vs ${defPower} - Success: ${success}`);
-
-        if (success) {
-          // CAPTURED
-          hex.state = 'CAPTURED';
-
-          // 100% of physical troops survive and garrison (placeholder)
-          const garrison = {
-            soldier: dep.payload.soldiers,
-            medic: dep.payload.medics,
-            juggernaut: juggernauts
-          };
-          hex.garrison_troops = garrison;
-          hex.conscript_count = 0;
-          hex.last_conscript_update = new Date().toISOString();
-
-          // Write to captured_tiles
-          const { data: ctData } = await window.supabaseClient
-            .from('captured_tiles')
-            .insert({
-              player_id: window.currentUser.id,
-              hex_q: hex.q,
-              hex_r: hex.r,
-              conscript_count: 0,
-              last_conscript_update: hex.last_conscript_update,
-              garrison_troops: garrison
-            })
-            .select()
-            .single();
-
-          if (ctData) {
-            if (!this.capturedTiles) this.capturedTiles = [];
-            this.capturedTiles.push(ctData);
-          }
-
-          this.calculateNetworkMultiplier();
-
-          // Spawn return trip for physical gunships
-          if (dep.payload.gunships > 0) {
-            const travelMs = (new Date() - new Date(dep.created_at || now)) || (10 * 60 * 1000); // reuse travel time or fallback
-            // To ensure we get the right dist:
-            const homeQ = window.currentUser.hex_x;
-            const homeR = window.currentUser.hex_y;
-            const dQ = Math.abs(homeQ - hex.q);
-            const dR = Math.abs(homeR - hex.r);
-            const dS = Math.abs(-homeQ - homeR - (-hex.q - hex.r));
-            const dist = Math.max(dQ, dR, dS);
-            const actualTravelMs = dist * 10 * 60 * 1000;
-
-            const returnArrival = new Date(Date.now() + actualTravelMs).toISOString();
-
-            const returnDep = {
-              player_id: window.currentUser.id,
-              origin_q: hex.q,
-              origin_r: hex.r,
-              target_q: homeQ,
-              target_r: homeR,
-              payload: { gunships: dep.payload.gunships, gunship_ids: dep.payload.gunship_ids },
-              arrival_time: returnArrival,
-              is_return_trip: true
-            };
-
-            const { data: retData } = await window.supabaseClient
-              .from('deployments')
-              .insert(returnDep)
-              .select()
-              .single();
-
-            if (retData) {
-              this.activeDeployments.push(retData);
-            }
-          }
-        } else {
-          // Attack failed. All troops lost.
-          console.log("Forces routed. Attack failed.");
+        // Trigger Combat Interactive UI
+        if (window.combatManager) {
+          window.combatManager.showNotification(dep, hex);
         }
       }
     }
