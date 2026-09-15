@@ -817,11 +817,11 @@ class StructureManager {
 
     title.innerText = `${building.type.name} (Lv. ${building.level})`;
 
-    // Check if the building is a vehicle provider (like gunship pad or transport bay)
+    // Check if the building is a vehicle provider (like gunship pad)
     if (manageVehicleBtn) {
-      if ((building.type.id === 'GUNSHIP' || building.type.id === 'TRANSPORT_BAY') && !this.isBuildingUnderConstruction(building)) {
+      if (building.type.id === 'GUNSHIP' && !this.isBuildingUnderConstruction(building)) {
         manageVehicleBtn.style.display = 'block';
-        manageVehicleBtn.innerText = building.type.id === 'GUNSHIP' ? 'Manage Gunship' : 'Manage Transport';
+        manageVehicleBtn.innerText = 'Manage Gunship';
         manageVehicleBtn.onclick = async () => {
           menu.style.display = 'none'; // hide upgrade menu
           if (window.vehicleManager) {
@@ -829,14 +829,11 @@ class StructureManager {
             if (vehicle) {
               window.currentVehicleId = vehicle.id;
               let capacity = 20 + ((building.level - 1) * 10);
-              if (building.type.id === 'TRANSPORT_BAY') {
-                capacity = Math.floor(this.getCapacities().troop / 4);
-              }
               window.updateVehicleMenuUI(vehicle, capacity);
 
               const titleEl = document.getElementById('vehicle-management-title');
               if (titleEl) {
-                titleEl.innerText = building.type.id === 'GUNSHIP' ? 'Gunship Management' : 'Transport Management';
+                titleEl.innerText = 'Gunship Management';
               }
 
               document.getElementById('vehicle-management-modal').style.display = 'flex';

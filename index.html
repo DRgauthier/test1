@@ -378,6 +378,26 @@
           <div id="player-transports-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 100px; overflow-y: auto;">
              <!-- Checkboxes injected by JS -->
           </div>
+
+          <div style="border-top: 1px solid #4a5568; margin-top: 10px; padding-top: 10px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #a0aec0;">Assign Troops</div>
+            <div style="font-size: 11px; margin-bottom: 5px; color: #718096;">Deploy Capacity: <span id="deploy-transport-capacity">0</span> | Remaining Garrison: <span id="deploy-garrison-remaining">0</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 5px; margin-bottom: 5px;">
+              <label style="font-size: 11px; display: flex; flex-direction: column; align-items: center; color: #a0aec0;">
+                Soldier
+                <input type="number" id="reinforce-soldier" min="0" value="0" onchange="window.worldMap.updateReinforceUI()" style="width: 45px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px; margin-top: 2px;">
+              </label>
+              <label style="font-size: 11px; display: flex; flex-direction: column; align-items: center; color: #a0aec0;">
+                Medic
+                <input type="number" id="reinforce-medic" min="0" value="0" onchange="window.worldMap.updateReinforceUI()" style="width: 45px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px; margin-top: 2px;">
+              </label>
+              <label style="font-size: 11px; display: flex; flex-direction: column; align-items: center; color: #a0aec0;">
+                Juggernaut
+                <input type="number" id="reinforce-juggernaut" min="0" value="0" onchange="window.worldMap.updateReinforceUI()" style="width: 45px; background: #2d3748; color: white; border: 1px solid #718096; padding: 4px; border-radius: 4px; margin-top: 2px;">
+              </label>
+            </div>
+          </div>
+
           <button id="send-transport-btn" onclick="window.worldMap.deployReinforce()" style="width: 100%; background: #3182ce; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 13px;">Send Reinforcements</button>
         </div>
       </div>

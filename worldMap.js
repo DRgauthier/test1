@@ -625,16 +625,6 @@ class WorldMap {
            const name = `Transport ${index + 1}`;
            if (deployedTransportIds.has(transport.dbId)) return; // Skip deployed ones
 
-           let s = 0, m = 0, j = 0;
-           if (window.vehicleManager) {
-              const v = window.vehicleManager.vehicles.find(veh => veh.building_id === transport.dbId);
-              if (v && v.assigned_troops) {
-                 s = v.assigned_troops.soldier || 0;
-                 m = v.assigned_troops.medic || 0;
-                 j = v.assigned_troops.juggernaut || 0;
-              }
-           }
-
            const label = document.createElement('label');
            label.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 11px; color: white; background: #2d3748; padding: 6px; border-radius: 4px; border: 1px solid #718096; cursor: pointer;';
 
@@ -642,9 +632,10 @@ class WorldMap {
            checkbox.type = 'checkbox';
            checkbox.value = transport.dbId;
            checkbox.className = 'player-transport-checkbox';
+           checkbox.onchange = () => this.updateReinforceUI();
 
            const text = document.createElement('span');
-           text.innerText = `${name} [S:${s} M:${m} J:${j}]`;
+           text.innerText = name;
 
            label.appendChild(checkbox);
            label.appendChild(text);
@@ -760,6 +751,81 @@ class WorldMap {
         </div>
       `;
       list.appendChild(item);
+    }
+  }
+
+  updateReinforceUI() {
+    if (!this.selectedHex || this.selectedHex.state !== 'CAPTURED') return;
+
+    const checkboxes = document.querySelectorAll('.player-transport-checkbox:checked');
+    const numSelected = checkboxes.length;
+    const capacityPerTransport = Math.floor(window.structureManager.getCapacities().troop / 4);
+    const totalTransportCapacity = numSelected * capacityPerTransport;
+
+    let currentGarrisonTotal = 0;
+    if (this.selectedHex.garrison_troops) {
+      currentGarrisonTotal = (this.selectedHex.garrison_troops.soldier || 0) + (this.selectedHex.garrison_troops.medic || 0) + (this.selectedHex.garrison_troops.juggernaut || 0);
+    }
+    const maxGarrison = capacityPerTransport; // Using the same formula for max garrison
+    const remainingGarrison = Math.max(0, maxGarrison - currentGarrisonTotal);
+
+    document.getElementById('deploy-transport-capacity').innerText = totalTransportCapacity;
+    document.getElementById('deploy-garrison-remaining').innerText = remainingGarrison;
+
+    // Validate inputs
+    const sInput = document.getElementById('reinforce-soldier');
+    const mInput = document.getElementById('reinforce-medic');
+    const jInput = document.getElementById('reinforce-juggernaut');
+
+    let s = parseInt(sInput.value) || 0;
+    let m = parseInt(mInput.value) || 0;
+    let j = parseInt(jInput.value) || 0;
+
+    // Cannot send more than available global troops
+    if (window.vehicleManager) {
+        if (s > window.vehicleManager.availableTroops.soldier) s = window.vehicleManager.availableTroops.soldier;
+        if (m > window.vehicleManager.availableTroops.medic) m = window.vehicleManager.availableTroops.medic;
+        if (j > window.vehicleManager.availableTroops.juggernaut) j = window.vehicleManager.availableTroops.juggernaut;
+    }
+
+    let totalRequested = s + m + j;
+
+    // Scale down if exceeding transport capacity or remaining garrison
+    const maxAllowed = Math.min(totalTransportCapacity, remainingGarrison);
+
+    if (totalRequested > maxAllowed) {
+       // simple proportional reduction or just capping from the top down.
+       // for simplicity, cap j, then m, then s
+       let excess = totalRequested - maxAllowed;
+
+       if (excess > 0 && j > 0) {
+           const remove = Math.min(excess, j);
+           j -= remove;
+           excess -= remove;
+       }
+       if (excess > 0 && m > 0) {
+           const remove = Math.min(excess, m);
+           m -= remove;
+           excess -= remove;
+       }
+       if (excess > 0 && s > 0) {
+           const remove = Math.min(excess, s);
+           s -= remove;
+           excess -= remove;
+       }
+    }
+
+    sInput.value = s;
+    mInput.value = m;
+    jInput.value = j;
+
+    const sendBtn = document.getElementById('send-transport-btn');
+    if (numSelected === 0 || maxAllowed === 0 || (s === 0 && m === 0 && j === 0)) {
+        sendBtn.style.opacity = 0.5;
+        sendBtn.disabled = true;
+    } else {
+        sendBtn.style.opacity = 1;
+        sendBtn.disabled = false;
     }
   }
 
@@ -942,21 +1008,13 @@ class WorldMap {
       return alert("You must deploy at least one transport to reinforce.");
     }
 
-    let sCount = 0;
-    let mCount = 0;
-    let jCount = 0;
+    const sInput = document.getElementById('reinforce-soldier');
+    const mInput = document.getElementById('reinforce-medic');
+    const jInput = document.getElementById('reinforce-juggernaut');
 
-    // Tally troops without saving yet
-    if (window.vehicleManager) {
-      for (const tid of transportIds) {
-        const vehicle = window.vehicleManager.vehicles.find(v => v.building_id === tid);
-        if (vehicle && vehicle.assigned_troops) {
-          sCount += vehicle.assigned_troops.soldier || 0;
-          mCount += vehicle.assigned_troops.medic || 0;
-          jCount += vehicle.assigned_troops.juggernaut || 0;
-        }
-      }
-    }
+    let sCount = parseInt(sInput.value) || 0;
+    let mCount = parseInt(mInput.value) || 0;
+    let jCount = parseInt(jInput.value) || 0;
 
     // Check if limits exceeded
     let currentTotal = 0;
@@ -970,6 +1028,7 @@ class WorldMap {
     }
 
     if (window.vehicleManager) {
+      // Ensure the deployed transports are marked as empty in db (no pre-assigned troops anymore)
       for (const tid of transportIds) {
         const vehicle = window.vehicleManager.vehicles.find(v => v.building_id === tid);
         if (vehicle && vehicle.assigned_troops) {
@@ -980,7 +1039,7 @@ class WorldMap {
         }
       }
 
-      // Permanently deduct from global total pool
+      // Deduct from global total pool since they are leaving the base
       window.vehicleManager.totalTroops.soldier = Math.max(0, window.vehicleManager.totalTroops.soldier - sCount);
       window.vehicleManager.totalTroops.medic = Math.max(0, window.vehicleManager.totalTroops.medic - mCount);
       window.vehicleManager.totalTroops.juggernaut = Math.max(0, window.vehicleManager.totalTroops.juggernaut - jCount);
@@ -1072,15 +1131,51 @@ class WorldMap {
         await window.supabaseClient.from('deployments').delete().eq('id', dep.id);
 
         if (dep.is_return_trip) {
-          console.log(`Gunships returned from [${dep.origin_q}, ${dep.origin_r}]`);
-          // Gunships are physical buildings at home base, they just 'become available' again
+          console.log(`Gunships/Transports returned from [${dep.origin_q}, ${dep.origin_r}]`);
+
+          if (dep.payload && dep.payload.type === 'REINFORCE_RETURN' && dep.payload.excess_troops) {
+             // Return excess troops to global pool
+             if (window.vehicleManager) {
+                window.vehicleManager.totalTroops.soldier += (dep.payload.excess_troops.soldier || 0);
+                window.vehicleManager.totalTroops.medic += (dep.payload.excess_troops.medic || 0);
+                window.vehicleManager.totalTroops.juggernaut += (dep.payload.excess_troops.juggernaut || 0);
+                window.vehicleManager.updateAvailableTroops();
+             }
+             if (window.npcManager) {
+                // Update local counts so UI reflects it immediately
+                window.npcManager.counts.soldier += (dep.payload.excess_troops.soldier || 0);
+                window.npcManager.counts.medic += (dep.payload.excess_troops.medic || 0);
+                window.npcManager.counts.juggernaut += (dep.payload.excess_troops.juggernaut || 0);
+
+                // Spawn physical representations (as visual feedback they returned)
+                const hq = window.structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
+                if (hq) {
+                   for (let t = 0; t < (dep.payload.excess_troops.soldier || 0); t++) {
+                       window.npcManager.npcs.push(new Soldier(hq.x + hq.type.width/2 + (Math.random()*20-10), hq.y + hq.type.height + 15));
+                   }
+                   for (let t = 0; t < (dep.payload.excess_troops.medic || 0); t++) {
+                       window.npcManager.npcs.push(new Medic(hq.x + hq.type.width/2 + (Math.random()*20-10), hq.y + hq.type.height + 15));
+                   }
+                   for (let t = 0; t < (dep.payload.excess_troops.juggernaut || 0); t++) {
+                       window.npcManager.npcs.push(new Juggernaut(hq.x + hq.type.width/2 + (Math.random()*20-10), hq.y + hq.type.height + 15));
+                   }
+                }
+
+                window.npcManager.updateUI();
+                window.npcManager.syncTroopsToDb();
+             }
+          }
+
+          // Vehicles are physical buildings at home base, they just 'become available' again
           // implicitly because the active deployment is gone.
           continue;
         }
 
         if (dep.payload && dep.payload.type === 'REINFORCE') {
           // It's a reinforcement arriving at captured target
+          let excessTroops = { soldier: 0, medic: 0, juggernaut: 0 };
           const hex = this.hexes.find(h => h.q === dep.target_q && h.r === dep.target_r);
+
           if (hex && hex.state === 'CAPTURED') {
             console.log(`Reinforcements arrived at [${hex.q}, ${hex.r}]`);
 
@@ -1098,9 +1193,21 @@ class WorldMap {
               // Discard excess
               let excess = currentTotal - maxGarrison;
               while(excess > 0 && (hex.garrison_troops.soldier > 0 || hex.garrison_troops.medic > 0 || hex.garrison_troops.juggernaut > 0)) {
-                 if (hex.garrison_troops.soldier > 0) { hex.garrison_troops.soldier--; excess--; }
-                 else if (hex.garrison_troops.medic > 0) { hex.garrison_troops.medic--; excess--; }
-                 else if (hex.garrison_troops.juggernaut > 0) { hex.garrison_troops.juggernaut--; excess--; }
+                 if (hex.garrison_troops.soldier > 0) {
+                     hex.garrison_troops.soldier--;
+                     excessTroops.soldier++;
+                     excess--;
+                 }
+                 else if (hex.garrison_troops.medic > 0) {
+                     hex.garrison_troops.medic--;
+                     excessTroops.medic++;
+                     excess--;
+                 }
+                 else if (hex.garrison_troops.juggernaut > 0) {
+                     hex.garrison_troops.juggernaut--;
+                     excessTroops.juggernaut++;
+                     excess--;
+                 }
               }
             }
 
@@ -1110,6 +1217,9 @@ class WorldMap {
                ct.garrison_troops = hex.garrison_troops;
                window.supabaseClient.from('captured_tiles').update({ garrison_troops: hex.garrison_troops }).eq('id', ct.id).then();
             }
+          } else {
+             // Hex was lost before reinforcements arrived, return all troops
+             excessTroops = { ...dep.payload.troops };
           }
 
           // Generate Return Trip for Transports
@@ -1125,7 +1235,7 @@ class WorldMap {
             target_r: dep.origin_r,
             is_return_trip: true,
             arrival_time: returnArrival.toISOString(),
-            payload: { type: 'REINFORCE_RETURN', gunship_ids: dep.payload.gunship_ids }
+            payload: { type: 'REINFORCE_RETURN', gunship_ids: dep.payload.gunship_ids, excess_troops: excessTroops }
           };
 
           const { data } = await window.supabaseClient.from('deployments').insert(returnDep).select().single();
