@@ -894,8 +894,8 @@ class WorldMap {
       window.vehicleManager.totalTroops.juggernaut = Math.max(0, window.vehicleManager.totalTroops.juggernaut - jCount);
       window.vehicleManager.updateAvailableTroops();
 
-      if (window.npcManager) {
-        window.npcManager.syncTroopsToDb();
+      if (window.structureManager) {
+        window.structureManager.syncPlayerState();
       }
     }
 
@@ -1068,8 +1068,8 @@ class WorldMap {
     }
     window.npcManager.updateUI();
 
-    if (window.npcManager) {
-      window.npcManager.syncTroopsToDb();
+    if (window.structureManager) {
+      window.structureManager.syncPlayerState();
     }
 
     // Calculate Arrival Time
@@ -1141,7 +1141,7 @@ class WorldMap {
                 window.vehicleManager.totalTroops.juggernaut += (dep.payload.excess_troops.juggernaut || 0);
                 window.vehicleManager.updateAvailableTroops();
              }
-             if (window.npcManager) {
+             if (window.structureManager) {
                 // Update local counts so UI reflects it immediately
                 window.npcManager.counts.soldier += (dep.payload.excess_troops.soldier || 0);
                 window.npcManager.counts.medic += (dep.payload.excess_troops.medic || 0);
@@ -1162,7 +1162,7 @@ class WorldMap {
                 }
 
                 window.npcManager.updateUI();
-                window.npcManager.syncTroopsToDb();
+                window.structureManager.syncPlayerState();
              }
           }
 

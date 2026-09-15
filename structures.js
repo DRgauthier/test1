@@ -420,13 +420,19 @@ class StructureManager {
 
   async syncPlayerState() {
     if (window.supabaseClient && window.currentUser) {
-      console.log('[DEBUG] syncPlayerState: syncing resources to DB. Steel:', this.resources.steel, 'Oil:', this.resources.oil);
+      const updateData = {
+        steel: this.resources.steel,
+        oil: this.resources.oil
+      };
+
+      if (window.vehicleManager) {
+        updateData.troop_counts = window.vehicleManager.totalTroops;
+      }
+
+      console.log('[DEBUG] syncPlayerState: syncing state to DB. Data:', updateData);
       await window.supabaseClient
         .from('players')
-        .update({
-          steel: this.resources.steel,
-          oil: this.resources.oil
-        })
+        .update(updateData)
         .eq('id', window.currentUser.id);
     }
   }
