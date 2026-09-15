@@ -285,8 +285,16 @@
   <div id="top-bar">
     <div class="top-bar-row">
       <span id="resource-display">Loading resources...</span>
+      <button id="leaderboard-toggle-btn" onclick="const lb = document.getElementById('leaderboard-ui'); lb.style.display = lb.style.display === 'none' ? 'block' : 'none'; if(window.worldMap && lb.style.display === 'block') window.worldMap.updateLeaderboard();" style="display: none; background: #ecc94b; color: #1a202c; border: 1px solid #b7791f; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">★ Rankings</button>
       <button id="scene-toggle-btn" onclick="window.sceneManager.toggleScene()" style="background: #3182ce; color: white; border: 1px solid #2b6cb0; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">View World Map</button>
       <button onclick="document.getElementById('main-menu-modal').style.display='flex'" style="background: #4a5568; color: white; border: 1px solid #718096; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Menu</button>
+    </div>
+  </div>
+
+  <div id="leaderboard-ui" style="display: none; position: absolute; top: 70px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 15px; border-radius: 8px; border: 1px solid #ecc94b; z-index: 10; font-family: sans-serif; width: 200px;">
+    <h3 style="margin: 0 0 10px 0; color: #ecc94b; text-align: center; font-size: 16px;">Top Commanders</h3>
+    <div id="leaderboard-list" style="font-size: 14px; display: flex; flex-direction: column; gap: 5px;">
+      Loading...
     </div>
   </div>
 
@@ -667,6 +675,7 @@
 
           window.currentUser.hex_x = player.hex_x;
           window.currentUser.hex_y = player.hex_y;
+          window.currentUser.points = player.points || 0;
 
           structureManager.resources.steel = player.steel || 0;
           structureManager.resources.oil = player.oil || 0;

@@ -121,22 +121,18 @@ class CombatManager {
   }
 
   generateEnemyBase(hex) {
-    const diff = hex.difficulty || 1;
-    // Simple deterministic seed based on hex coordinates and global seed
+    const isObjective = hex.state === 'OBJECTIVE';
+    const diff = isObjective ? (hex.difficulty || 1) * 2 : (hex.difficulty || 1);
     const hexSeed = (window.worldMap ? window.worldMap.seed : 12345) + hex.q * 1000 + hex.r;
     const rng = mulberry32(hexSeed);
-
     this.buildings = [];
-
-    // Always an HQ in the center
+    this.npcs = [];
     const hq = new Structure('HEADQUARTERS', -75, -75);
-    // Buff health based on difficulty
     hq.maxHealth = 1000 + (diff * 500);
+    if (isObjective) hq.maxHealth *= 1.5;
     hq.health = hq.maxHealth;
     this.buildings.push(hq);
-
-    // Number of turrets based on difficulty
-    const numTurrets = diff * 2;
+    const numTurrets = diff * 2 + (isObjective ? 2 : 0);
     for (let i = 0; i < numTurrets; i++) {
       const angle = rng() * Math.PI * 2;
       const dist = 150 + rng() * 200;
@@ -188,6 +184,22 @@ class CombatManager {
 
     this.totalEnemyBuildings = this.buildings.length;
     this.hqDestroyed = false;
+    if (isObjective) {
+        for (let i = 0; i < diff; i++) {
+           const nx = Math.cos(rng() * Math.PI * 2) * (50 + rng() * 100);
+           const ny = Math.sin(rng() * Math.PI * 2) * (50 + rng() * 100);
+           const jug = new Juggernaut(nx, ny);
+           jug.target = null;
+           this.npcs.push(jug);
+        }
+        for (let i = 0; i < diff * 3; i++) {
+           const nx = Math.cos(rng() * Math.PI * 2) * (100 + rng() * 150);
+           const ny = Math.sin(rng() * Math.PI * 2) * (100 + rng() * 150);
+           const sol = new Soldier(nx, ny);
+           sol.target = null;
+           this.npcs.push(sol);
+        }
+    }
   }
 
   setupGunshipsUI() {
@@ -456,61 +468,69 @@ class CombatManager {
        for(let i=0; i<3; i++) starText += (i < stars) ? '★' : '☆';
        document.getElementById('combat-stars').innerText = starText;
 
-       const diff = this.hex.difficulty || 1;
-       const rewardSteel = stars * diff * 150;
-       const rewardOil = stars * diff * 50;
+       const isObjective = this.hex.state === 'OBJECTIVE';
 
-       document.getElementById('combat-rewards-text').innerText = `Loot: ${rewardSteel} Steel, ${rewardOil} Oil`;
+       if (isObjective) {
+          const rewardPoints = stars === 3 ? this.hex.difficulty : 0;
+          if (rewardPoints > 0) document.getElementById('combat-rewards-text').innerText = `Loot: ${rewardPoints} Leaderboard Points`;
+          else document.getElementById('combat-rewards-text').innerText = `Objective failed. You need 100% destruction to win points.`;
 
-       if (stars > 0 && window.currentUser && window.supabaseClient) {
-          window.currentUser.steel += rewardSteel;
-          window.currentUser.oil += rewardOil;
-
-          await window.supabaseClient
-            .from('players')
-            .update({ steel: window.currentUser.steel, oil: window.currentUser.oil })
-            .eq('id', window.currentUser.id);
-
-          const sb = document.getElementById('steel-balance');
-          const ob = document.getElementById('oil-balance');
-          if (sb) sb.innerText = window.currentUser.steel;
-          if (ob) ob.innerText = window.currentUser.oil;
-
-          if (stars === 3 && this.hex.state !== 'CAPTURED') {
-            this.hex.state = 'CAPTURED';
-            if (window.worldMap) {
-                // Remove base from DB
-                await window.supabaseClient.from('bases').delete().eq('hex_x', this.hex.q).eq('hex_y', this.hex.r);
-
-                // Add to captured_tiles
-                const garrison = {
-                   soldier: this.deployment.payload.soldiers || 0,
-                   medic: this.deployment.payload.medics || 0,
-                   juggernaut: this.deployment.payload.juggernauts || 0
-                };
-                this.hex.garrison_troops = garrison;
-                this.hex.conscript_count = 0;
-                this.hex.last_conscript_update = new Date().toISOString();
-
-                const { data: ctData } = await window.supabaseClient
-                  .from('captured_tiles')
-                  .insert({
-                    player_id: window.currentUser.id,
-                    hex_q: this.hex.q,
-                    hex_r: this.hex.r,
+          if (stars === 3 && window.currentUser && window.supabaseClient) {
+              const { data: objData } = await window.supabaseClient.from('objectives').select('id').eq('id', this.hex.objective_id).maybeSingle();
+              if (objData) {
+                  window.currentUser.points = (window.currentUser.points || 0) + rewardPoints;
+                  await window.supabaseClient.from('players').update({ points: window.currentUser.points }).eq('id', window.currentUser.id);
+                  await window.supabaseClient.from('objectives').delete().eq('id', this.hex.objective_id);
+                  this.hex.state = 'NPC_BASE';
+                  if (window.worldMap) {
+                      window.worldMap.objectives = window.worldMap.objectives.filter(o => o.id !== this.hex.objective_id);
+                      window.worldMap.updateLeaderboard();
+                      window.worldMap.fetchAndManageObjectives();
+                  }
+              } else {
+                 const diff = this.hex.difficulty || 1;
+                 const rewardSteel = stars * diff * 150;
+                 const rewardOil = stars * diff * 50;
+                 document.getElementById('combat-rewards-text').innerText = `Another player beat this objective first! Loot: ${rewardSteel} Steel, ${rewardOil} Oil`;
+                 window.currentUser.steel += rewardSteel;
+                 window.currentUser.oil += rewardOil;
+                 await window.supabaseClient.from('players').update({ steel: window.currentUser.steel, oil: window.currentUser.oil }).eq('id', window.currentUser.id);
+                 if (document.getElementById('steel-balance')) document.getElementById('steel-balance').innerText = window.currentUser.steel;
+                 if (document.getElementById('oil-balance')) document.getElementById('oil-balance').innerText = window.currentUser.oil;
+                 this.hex.state = 'NPC_BASE';
+              }
+          }
+       } else {
+           const diff = this.hex.difficulty || 1;
+           const rewardSteel = stars * diff * 150;
+           const rewardOil = stars * diff * 50;
+           document.getElementById('combat-rewards-text').innerText = `Loot: ${rewardSteel} Steel, ${rewardOil} Oil`;
+           if (stars > 0 && window.currentUser && window.supabaseClient) {
+              window.currentUser.steel += rewardSteel;
+              window.currentUser.oil += rewardOil;
+              await window.supabaseClient.from('players').update({ steel: window.currentUser.steel, oil: window.currentUser.oil }).eq('id', window.currentUser.id);
+              if (document.getElementById('steel-balance')) document.getElementById('steel-balance').innerText = window.currentUser.steel;
+              if (document.getElementById('oil-balance')) document.getElementById('oil-balance').innerText = window.currentUser.oil;
+              if (stars === 3 && this.hex.state !== 'CAPTURED') {
+                this.hex.state = 'CAPTURED';
+                if (window.worldMap) {
+                    await window.supabaseClient.from('bases').delete().eq('hex_x', this.hex.q).eq('hex_y', this.hex.r);
+                    this.hex.garrison_troops = { soldier: this.deployment.payload.soldiers || 0, medic: this.deployment.payload.medics || 0, juggernaut: this.deployment.payload.juggernauts || 0 };
+                    this.hex.conscript_count = 0;
+                    this.hex.last_conscript_update = new Date().toISOString();
+                    const { data: ctData } = await window.supabaseClient.from('captured_tiles').insert({ player_id: window.currentUser.id, hex_q: this.hex.q, hex_r: this.hex.r,
                     conscript_count: 0,
                     last_conscript_update: this.hex.last_conscript_update,
-                    garrison_troops: garrison
+                    garrison_troops: this.hex.garrison_troops
                   })
                   .select()
                   .single();
-
                 if (ctData) {
                   if (!window.worldMap.capturedTiles) window.worldMap.capturedTiles = [];
                   window.worldMap.capturedTiles.push(ctData);
                 }
-
                 window.worldMap.calculateNetworkMultiplier();
+              }
             }
           }
        }
