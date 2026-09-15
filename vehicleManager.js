@@ -2,6 +2,7 @@ class VehicleManager {
   constructor() {
     this.vehicles = [];
     this.totalTroops = { soldier: 0, medic: 0, juggernaut: 0 };
+    this.availableTroops = { soldier: 0, medic: 0, juggernaut: 0 };
   }
 
   async loadVehicles() {
