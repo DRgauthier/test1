@@ -800,6 +800,8 @@
               b.level = bData.level;
               b.health = bData.health;
               b.construction_started_at = bData.construction_started_at;
+              b.training_queue = bData.training_queue || [];
+              b.training_started_at = bData.training_started_at || null;
               structureManager.buildings.push(b);
             });
           }
@@ -813,22 +815,48 @@
           const hq = structureManager.buildings.find(b => b.type.id === 'HEADQUARTERS');
           if (hq) {
              let deployedTroops = { soldier: 0, medic: 0, juggernaut: 0 };
-             if (window.worldMap && window.worldMap.activeDeployments) {
-                const deployedGunshipIds = new Set();
-                for (const dep of window.worldMap.activeDeployments) {
-                   if (dep.payload && dep.payload.gunship_ids) {
-                      for (const id of dep.payload.gunship_ids) {
-                         deployedGunshipIds.add(id);
-                      }
-                   }
+             // First, we must count all troops assigned to ANY vehicle (even docked) as "deployed" visually
+             // so they don't spawn around the base.
+             for (const v of window.vehicleManager.vehicles) {
+                if (v.assigned_troops) {
+                   deployedTroops.soldier += (v.assigned_troops.soldier || 0);
+                   deployedTroops.medic += (v.assigned_troops.medic || 0);
+                   deployedTroops.juggernaut += (v.assigned_troops.juggernaut || 0);
                 }
-                for (const v of window.vehicleManager.vehicles) {
-                   if (v.building_id && deployedGunshipIds.has(v.building_id) && v.assigned_troops) {
-                      deployedTroops.soldier += (v.assigned_troops.soldier || 0);
-                      deployedTroops.medic += (v.assigned_troops.medic || 0);
-                      deployedTroops.juggernaut += (v.assigned_troops.juggernaut || 0);
-                   }
-                }
+             }
+
+             // Process offline training completion first
+             const now = Date.now();
+             for (const b of structureManager.buildings) {
+               if (b.training_queue && b.training_queue.length > 0 && b.training_started_at) {
+                 const startedAt = new Date(b.training_started_at).getTime();
+                 const elapsedTicks = Math.floor((now - startedAt) / (1000 / 60)); // Convert ms to 60fps ticks
+
+                 let remainingTicks = elapsedTicks;
+                 let modified = false;
+
+                 while (b.training_queue.length > 0 && remainingTicks >= b.training_queue[0].timer) {
+                   const task = b.training_queue.shift();
+                   // BUGFIX: code review caught that maxTime was used here, we must use task.timer
+                   remainingTicks -= task.timer;
+                   window.vehicleManager.totalTroops[task.typeKey]++;
+                   window.npcManager.counts[task.typeKey]++;
+                   modified = true;
+                 }
+
+                 if (b.training_queue.length > 0) {
+                   b.training_queue[0].timer -= remainingTicks;
+                   // Reset started_at to now for accurate subsequent ticks
+                   b.training_started_at = new Date().toISOString();
+                 } else {
+                   b.training_started_at = null;
+                 }
+
+                 if (modified) {
+                   structureManager.syncBuildingState(b);
+                   window.vehicleManager.updateAvailableTroops();
+                 }
+               }
              }
 
              const types = ['soldier', 'medic', 'juggernaut'];

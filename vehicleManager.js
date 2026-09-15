@@ -148,11 +148,21 @@ class VehicleManager {
     this.updateAvailableTroops();
     await this.saveVehicle(vehicle);
     
+    // Explicitly sync player state so that changes (e.g. if we want to save any global state updates) are persisted immediately
+    if (window.structureManager) {
+      window.structureManager.syncPlayerState();
+    }
+
     // Try to update UI if it's open
     if (window.updateVehicleMenuUI) {
       window.updateVehicleMenuUI(vehicle, capacity);
     }
     
+    // Update main UI to show available/total troops correctly
+    if (window.npcManager) {
+       window.npcManager.updateUI();
+    }
+
     return true;
   }
 }

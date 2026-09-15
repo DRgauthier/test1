@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS public.buildings (
     x NUMERIC NOT NULL,
     y NUMERIC NOT NULL,
     health NUMERIC NOT NULL,
+    training_queue JSONB DEFAULT '[]'::jsonb,
+    training_started_at TIMESTAMP WITH TIME ZONE,
     construction_started_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
