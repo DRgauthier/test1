@@ -45,6 +45,8 @@ class Structure {
     
     this.maxHealth = 100;
     this.health = this.maxHealth;
+    this.training_queue = [];
+    this.training_started_at = null;
   }
 
   draw(ctx) {
@@ -418,6 +420,18 @@ class StructureManager {
     return 0; // Default if not in config
   }
 
+  async syncBuildingState(building) {
+    if (window.supabaseClient && building && building.dbId) {
+      await window.supabaseClient
+        .from('buildings')
+        .update({
+          training_queue: building.training_queue || [],
+          training_started_at: building.training_started_at || null
+        })
+        .eq('id', building.dbId);
+    }
+  }
+
   async syncPlayerState() {
     if (window.supabaseClient && window.currentUser) {
       const updateData = {
@@ -434,6 +448,12 @@ class StructureManager {
         .from('players')
         .update(updateData)
         .eq('id', window.currentUser.id);
+
+      // Sync queues for all buildings that can train
+      const trainingBuildings = this.buildings.filter(b => b.training_queue && b.training_queue.length > 0);
+      for (const b of trainingBuildings) {
+        await this.syncBuildingState(b);
+      }
     }
   }
 

@@ -241,10 +241,25 @@ class Juggernaut extends Soldier {
 }
 
 class NPCManager {
+  get trainingQueue() {
+    let queue = [];
+    if (!this.structureManager) return queue;
+    for (const b of this.structureManager.buildings) {
+      if (b.training_queue && b.training_queue.length > 0) {
+        b.training_queue.forEach((task, idx) => {
+           queue.push({
+             ...task,
+             building: b,
+             isFirst: idx === 0
+           });
+        });
+      }
+    }
+    return queue;
+  }
   constructor(structureManager) {
     this.structureManager = structureManager;
     this.npcs = [];
-    this.trainingQueue = []; 
     this.counts = { soldier: 0, medic: 0, juggernaut: 0 };
     this.initUI();
   }
@@ -352,14 +367,31 @@ class NPCManager {
     ['soldier', 'medic', 'juggernaut'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
       const count = window.vehicleManager ? (window.vehicleManager.totalTroops[typeKey] || 0) : this.counts[typeKey];
+
+      // Calculate available by subtracting deployed (docked or active in transit)
+      let available = count;
+      if (window.vehicleManager) {
+         available = window.vehicleManager.availableTroops[typeKey] || 0;
+      }
+      const inGunships = count - available;
+
       const queuedCount = this.trainingQueue.filter(t => t.typeKey === typeKey).length;
       
       const costStr = this.formatCostString(typeObj.cost);
-      const displayCount = queuedCount > 0 ? `${count} (+${queuedCount})` : `${count}`;
+      let displayCount = `${count + queuedCount} Total`;
+
+      let breakdown = [];
+      if (available > 0) breakdown.push(`${available} Ready`);
+      if (inGunships > 0) breakdown.push(`${inGunships} Assigned`);
+      if (queuedCount > 0) breakdown.push(`+${queuedCount} Train`);
+
+      if (breakdown.length > 0) {
+         displayCount += ` <br><span style="color:#a0aec0;font-size:10px;">[${breakdown.join(', ')}]</span>`;
+      }
       
       const info = document.getElementById(`info-${typeKey}`);
       if (info) {
-        info.innerText = `${typeObj.name}: ${displayCount} (${costStr})`;
+        info.innerHTML = `${typeObj.name}: ${displayCount} (${costStr})`;
       }
 
       const btn = document.getElementById(`btn-${typeKey}`);
@@ -416,8 +448,8 @@ class NPCManager {
     if (validBuildings.length === 0) return;
 
     validBuildings.sort((a, b) => {
-      const qA = this.trainingQueue.filter(t => t.building === a).length;
-      const qB = this.trainingQueue.filter(t => t.building === b).length;
+      const qA = a.training_queue ? a.training_queue.length : 0;
+      const qB = b.training_queue ? b.training_queue.length : 0;
       return qA - qB;
     });
     const chosenBuilding = validBuildings[0];
@@ -425,13 +457,21 @@ class NPCManager {
     this.structureManager.deductCost(typeObj.cost);
     this.structureManager.updateResourceUI();
 
-    this.trainingQueue.push({
+    if (!chosenBuilding.training_queue) chosenBuilding.training_queue = [];
+    chosenBuilding.training_queue.push({
       typeKey: typeKey,
       typeObj: typeObj,
       timer: typeObj.buildTime,
-      maxTime: typeObj.buildTime,
-      building: chosenBuilding
+      maxTime: typeObj.buildTime
     });
+
+    if (chosenBuilding.training_queue.length === 1) {
+      chosenBuilding.training_started_at = new Date().toISOString();
+    }
+
+    if (this.structureManager) {
+      this.structureManager.syncBuildingState(chosenBuilding);
+    }
 
     this.updateUI(); 
   }
@@ -439,25 +479,15 @@ class NPCManager {
   update(enemies) {
     let uiNeedsUpdate = false;
 
-    const activeBuildings = new Set();
-    for (let i = 0; i < this.trainingQueue.length; i++) {
-      const task = this.trainingQueue[i];
-      
-      if (!this.structureManager.buildings.includes(task.building)) {
-        this.structureManager.refundCost(task.typeObj.cost);
-        this.trainingQueue.splice(i, 1);
-        i--;
-        uiNeedsUpdate = true;
-        continue;
-      }
+    for (const b of this.structureManager.buildings) {
+      if (b.training_queue && b.training_queue.length > 0) {
+        const task = b.training_queue[0];
 
-      if (!activeBuildings.has(task.building)) {
-        activeBuildings.add(task.building);
         task.timer--;
         
         if (task.timer <= 0) {
-          const spawnX = task.building.x + task.building.type.width / 2 + (Math.random() * 20 - 10);
-          const spawnY = task.building.y + task.building.type.height + 15;
+          const spawnX = b.x + b.type.width / 2 + (Math.random() * 20 - 10);
+          const spawnY = b.y + b.type.height + 15;
           
           let newNPC;
           if (task.typeKey === 'soldier') newNPC = new Soldier(spawnX, spawnY);
@@ -477,8 +507,17 @@ class NPCManager {
             }
           }
           
-          this.trainingQueue.splice(i, 1);
-          i--;
+          b.training_queue.shift();
+          if (b.training_queue.length > 0) {
+            b.training_started_at = new Date().toISOString();
+          } else {
+            b.training_started_at = null;
+          }
+
+          if (this.structureManager) {
+            this.structureManager.syncBuildingState(b);
+          }
+
           uiNeedsUpdate = true;
         }
       }
@@ -521,12 +560,10 @@ class NPCManager {
       npc.draw(ctx);
     }
 
-    const activeBuildings = new Set();
-    for (const task of this.trainingQueue) {
-      if (!activeBuildings.has(task.building)) {
-        activeBuildings.add(task.building);
+    for (const b of this.structureManager.buildings) {
+      if (b.training_queue && b.training_queue.length > 0) {
+        const task = b.training_queue[0];
         
-        const b = task.building;
         const barW = 40;
         const barH = 6;
         const barX = b.x + b.type.width / 2 - barW / 2;
