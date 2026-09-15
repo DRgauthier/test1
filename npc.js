@@ -249,19 +249,6 @@ class NPCManager {
     this.initUI();
   }
 
-  async syncTroopsToDb() {
-    if (!window.currentUser || !window.supabaseClient || !window.vehicleManager) return;
-    
-    const { error } = await window.supabaseClient
-      .from('players')
-      .update({ troop_counts: window.vehicleManager.totalTroops })
-      .eq('id', window.currentUser.id);
-      
-    if (error) {
-      console.error("Error syncing troops to db:", error);
-    }
-  }
-
   initUI() {
     const uiContainer = document.createElement('div');
     uiContainer.id = 'npc-menu';
@@ -484,7 +471,9 @@ class NPCManager {
             if (window.vehicleManager) {
               window.vehicleManager.totalTroops[task.typeKey]++;
               window.vehicleManager.updateAvailableTroops();
-              this.syncTroopsToDb();
+              if (window.structureManager) {
+                window.structureManager.syncPlayerState();
+              }
             }
           }
           
@@ -508,7 +497,9 @@ class NPCManager {
           if (window.vehicleManager) {
             window.vehicleManager.totalTroops[typeKey] = Math.max(0, window.vehicleManager.totalTroops[typeKey] - 1);
             window.vehicleManager.updateAvailableTroops();
-            this.syncTroopsToDb();
+            if (window.structureManager) {
+              window.structureManager.syncPlayerState();
+            }
           }
         }
       }

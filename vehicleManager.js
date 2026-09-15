@@ -15,10 +15,14 @@ class VehicleManager {
       .maybeSingle();
       
     if (!playerError && playerData && playerData.troop_counts) {
+      let tc = playerData.troop_counts;
+      if (typeof tc === 'string') {
+        try { tc = JSON.parse(tc); } catch(e) {}
+      }
       this.totalTroops = {
-        soldier: playerData.troop_counts.soldier || 0,
-        medic: playerData.troop_counts.medic || 0,
-        juggernaut: playerData.troop_counts.juggernaut || 0
+        soldier: tc.soldier || 0,
+        medic: tc.medic || 0,
+        juggernaut: tc.juggernaut || 0
       };
     }
 
