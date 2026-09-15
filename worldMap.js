@@ -9,6 +9,37 @@ function mulberry32(a) {
 }
 
 class WorldMap {
+  async updateLeaderboard() {
+    if (!window.supabaseClient) return;
+    const listEl = document.getElementById('leaderboard-list');
+    if (!listEl) return;
+    listEl.innerHTML = 'Loading...';
+    const { data: topPlayers, error } = await window.supabaseClient.from('players').select('email, points').order('points', { ascending: false }).limit(10);
+    if (error || !topPlayers) {
+       listEl.innerHTML = 'Failed to load rankings.';
+       return;
+    }
+    listEl.innerHTML = '';
+    topPlayers.forEach((p, index) => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.padding = '4px 0';
+        if (index === 0) div.style.color = '#ecc94b';
+        else if (index === 1) div.style.color = '#e2e8f0';
+        else if (index === 2) div.style.color = '#b7791f';
+        const emailPrefix = p.email ? p.email.substring(0, 3) + '***' : 'Unknown';
+        const rankSpan = document.createElement('span');
+        rankSpan.innerText = `${index + 1}. ${emailPrefix}`;
+        const ptsSpan = document.createElement('span');
+        ptsSpan.innerText = p.points || 0;
+        ptsSpan.style.fontWeight = 'bold';
+        div.appendChild(rankSpan);
+        div.appendChild(ptsSpan);
+        listEl.appendChild(div);
+    });
+  }
+
   constructor(cols = 20, rows = 20, seed = '12345') {
     this.cols = cols;
     this.rows = rows;
@@ -141,6 +172,27 @@ class WorldMap {
       ctx.strokeStyle = '#e53e3e';
       ctx.fillStyle = 'rgba(229, 62, 62, 0.3)';
       ctx.fill();
+    } else if (hexState === 'OBJECTIVE') {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#d69e2e'; // Yellow-gold
+      ctx.fillStyle = 'rgba(214, 158, 46, 0.5)';
+      ctx.fill();
+
+      // Draw a simple star
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        ctx.lineTo(Math.cos((18 + i * 72) / 180 * Math.PI) * 12, -Math.sin((18 + i * 72) / 180 * Math.PI) * 12);
+        ctx.lineTo(Math.cos((54 + i * 72) / 180 * Math.PI) * 6, -Math.sin((54 + i * 72) / 180 * Math.PI) * 6);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#ecc94b';
+      ctx.fill();
+      ctx.strokeStyle = '#b7791f';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
     } else if (hexState === 'RECALLING') {
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#ecc94b';
@@ -219,8 +271,54 @@ class WorldMap {
     } else {
       this.activeDeployments = [];
     }
+
+    // Fetch and manage Objectives
+    await this.fetchAndManageObjectives();
   }
 
+
+  async fetchAndManageObjectives() {
+    if (!window.supabaseClient) return;
+
+    const { data: objectives, error } = await window.supabaseClient.from('objectives').select('*');
+    if (error) {
+      console.error('Error fetching objectives:', error);
+      return;
+    }
+
+    let activeObjectives = [...objectives];
+
+    if (activeObjectives.length < 3) {
+      const numToSpawn = 3 - activeObjectives.length;
+      for (let i = 0; i < numToSpawn; i++) {
+        let attempts = 0;
+        let validHex = null;
+        while (attempts < 50) {
+          const potentialHex = this.hexes[Math.floor(this.rng() * this.hexes.length)];
+          if (potentialHex.state === 'NPC_BASE' && !activeObjectives.find(o => o.q === potentialHex.q && o.r === potentialHex.r)) {
+            validHex = potentialHex;
+            break;
+          }
+          attempts++;
+        }
+        if (validHex) {
+          const diff = Math.floor(Math.random() * 3) + 1;
+          const { data: insertedObj } = await window.supabaseClient.from('objectives').insert({q: validHex.q, r: validHex.r, difficulty: diff}).select().single();
+          if (insertedObj) activeObjectives.push(insertedObj);
+        }
+      }
+    }
+
+    this.objectives = activeObjectives;
+    for (const obj of this.objectives) {
+      const hex = this.hexes.find(h => h.q === obj.q && h.r === obj.r);
+      if (hex) {
+        hex.state = 'OBJECTIVE';
+        hex.difficulty = obj.difficulty;
+        hex.objective_id = obj.id;
+      }
+    }
+  }
 
   draw(ctx) {
     for (const hex of this.hexes) {
@@ -457,9 +555,13 @@ class WorldMap {
     if (hex.state === 'PLAYER_BASE') {
       // Just show basic info, no deploy menu for player bases right now
       document.getElementById('hex-coords').innerText += ' (Player Base)';
-    } else if (hex.state === 'NPC_BASE') {
+    } else if (hex.state === 'NPC_BASE' || hex.state === 'OBJECTIVE') {
       document.getElementById('hex-content-npc').style.display = 'block';
       document.getElementById('deploy-npc-diff').innerText = '★'.repeat(hex.difficulty) + '☆'.repeat(5 - hex.difficulty);
+
+      if (hex.state === 'OBJECTIVE') {
+          document.getElementById('deploy-npc-diff').innerText += ' (Objective!)';
+      }
 
       // Calculate travel time (distance to home base)
       const homeQ = window.currentUser.hex_x;
@@ -477,7 +579,11 @@ class WorldMap {
       const diffValue = hex.difficulty || 1;
       const baseRate = diffValue * 10;
       const connectedRate = Math.floor(baseRate * 1.5);
-      document.getElementById('deploy-npc-reward').innerText = `Yields ${baseRate} conscripts/hr (${connectedRate}/hr if connected to homebase)`;
+      if (hex.state === 'OBJECTIVE') {
+         document.getElementById('deploy-npc-reward').innerText = `Yields ${diffValue} Leaderboard Points`;
+      } else {
+         document.getElementById('deploy-npc-reward').innerText = `Yields ${baseRate} conscripts/hr (${connectedRate}/hr if connected to homebase)`;
+      }
 
       document.getElementById('deploy-avail-s').innerText = window.npcManager.counts.soldier;
       document.getElementById('deploy-avail-m').innerText = window.npcManager.counts.medic;
@@ -856,7 +962,7 @@ class WorldMap {
   }
 
   async deployAttack() {
-    if (!this.selectedHex || this.selectedHex.state !== 'NPC_BASE') return;
+    if (!this.selectedHex || (this.selectedHex.state !== 'NPC_BASE' && this.selectedHex.state !== 'OBJECTIVE')) return;
     if (!window.supabaseClient || !window.currentUser) return;
 
     const checkboxes = document.querySelectorAll('.player-gunship-checkbox:checked');

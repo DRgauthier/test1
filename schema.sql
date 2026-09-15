@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.players (
     steel NUMERIC DEFAULT 0,
     oil NUMERIC DEFAULT 0,
     troop_counts JSONB DEFAULT '{"soldier": 0, "medic": 0, "juggernaut": 0}'::jsonb,
+    points INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -137,3 +138,23 @@ DROP POLICY IF EXISTS "Enable update for users based on user_id" ON public.deplo
 CREATE POLICY "Enable update for users based on user_id" ON public.deployments FOR UPDATE USING (auth.uid() = player_id);
 DROP POLICY IF EXISTS "Enable delete for users based on user_id" ON public.deployments;
 CREATE POLICY "Enable delete for users based on user_id" ON public.deployments FOR DELETE USING (auth.uid() = player_id);
+
+
+-- objectives table
+CREATE TABLE IF NOT EXISTS public.objectives (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    q INTEGER NOT NULL,
+    r INTEGER NOT NULL,
+    difficulty INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.objectives ENABLE ROW LEVEL SECURITY;
+
+-- objectives RLS
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.objectives;
+CREATE POLICY "Enable read access for authenticated users" ON public.objectives FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for authenticated users" ON public.objectives;
+CREATE POLICY "Enable insert for authenticated users" ON public.objectives FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable delete for authenticated users" ON public.objectives;
+CREATE POLICY "Enable delete for authenticated users" ON public.objectives FOR DELETE USING (auth.role() = 'authenticated');

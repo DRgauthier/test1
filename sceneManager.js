@@ -1,9 +1,12 @@
 class SceneManager {
   constructor() {
-    this.currentScene = 'BASE'; // 'BASE' or 'WORLD'
+    this.currentScene = 'BASE'; // 'BASE', 'WORLD', 'COMBAT'
   }
 
   toggleScene() {
+    const btn = document.getElementById('scene-toggle-btn');
+    if (!btn) return;
+
     if (this.currentScene === 'BASE') {
       this.currentScene = 'WORLD';
 
@@ -26,39 +29,60 @@ class SceneManager {
         upgradeMenu.style.display = 'none';
       }
 
-      const deployPanel = document.getElementById('deployments-panel');
-      if (deployPanel && window.worldMap && window.worldMap.activeDeployments && window.worldMap.activeDeployments.length > 0) {
-        deployPanel.style.display = 'block';
+      const lbBtn = document.getElementById('leaderboard-toggle-btn');
+      if (lbBtn) lbBtn.style.display = 'inline-block';
+
+      if (window.worldMap) {
+        window.worldMap.updateDeploymentsUI();
       }
 
-    } else {
+      btn.innerText = 'View Home Base';
+    } else if (this.currentScene === 'WORLD') {
       this.currentScene = 'BASE';
-      // Show base building UI
-      const buildMenu = document.getElementById('build-menu-container');
-      if (buildMenu) {
-        buildMenu.style.display = 'block';
-      }
-      const npcMenu = document.getElementById('npc-menu');
-      if (npcMenu) {
-        npcMenu.style.display = 'block';
-      }
 
-      // Also close the hex panel if it's open
+      // Hide world map UI panels
       const hexPanel = document.getElementById('hex-panel');
       if (hexPanel) {
         hexPanel.style.display = 'none';
       }
-
       const deployPanel = document.getElementById('deployments-panel');
       if (deployPanel) {
         deployPanel.style.display = 'none';
       }
+
+      const lbBtn = document.getElementById('leaderboard-toggle-btn');
+      if (lbBtn) lbBtn.style.display = 'none';
+      const lbUI = document.getElementById('leaderboard-ui');
+      if (lbUI) lbUI.style.display = 'none';
+
+      // Show base building UI
+      const buildMenu = document.getElementById('build-menu-container');
+      if (buildMenu) {
+        buildMenu.style.display = 'flex';
+      }
+      const npcMenu = document.getElementById('npc-menu');
+      if (npcMenu) {
+        npcMenu.style.display = 'flex';
+      }
+
+      btn.innerText = 'View World Map';
+
+      if (window.structureManager) {
+        window.structureManager.renderBuildMenu();
+      }
     }
 
-    // Update button text if it exists
-    const toggleBtn = document.getElementById('scene-toggle-btn');
-    if (toggleBtn) {
-      toggleBtn.innerText = this.currentScene === 'BASE' ? 'View World Map' : 'View Base';
+    // Reset camera when switching
+    if (window.getCurrentCamera) {
+      const cam = window.getCurrentCamera();
+      if (cam) {
+        cam.x = 0;
+        cam.y = 0;
+        cam.zoom = 1;
+      }
     }
   }
 }
+
+// Instantiate globally
+window.sceneManager = new SceneManager();
