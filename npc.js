@@ -370,7 +370,7 @@ class NPCManager {
 
       // Calculate available by subtracting deployed (docked or active in transit)
       let available = count;
-      if (window.vehicleManager) {
+      if (window.vehicleManager && window.vehicleManager.availableTroops) {
          available = window.vehicleManager.availableTroops[typeKey] || 0;
       }
       const inGunships = count - available;
