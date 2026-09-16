@@ -692,9 +692,9 @@
           if (window.vehicleManager) {
             await window.vehicleManager.loadVehicles();
             if (window.npcManager) {
-              window.npcManager.counts.soldier = window.vehicleManager.totalTroops.soldier;
-              window.npcManager.counts.medic = window.vehicleManager.totalTroops.medic;
-              window.npcManager.counts.juggernaut = window.vehicleManager.totalTroops.juggernaut;
+              if (window.vehicleManager.totalTroops) window.npcManager.counts.soldier = window.vehicleManager.totalTroops.soldier;
+              if (window.vehicleManager.totalTroops) window.npcManager.counts.medic = window.vehicleManager.totalTroops.medic;
+              if (window.vehicleManager.totalTroops) window.npcManager.counts.juggernaut = window.vehicleManager.totalTroops.juggernaut;
             }
           }
         }

@@ -317,7 +317,7 @@ class NPCManager {
     let totalTroops = 0;
     let totalQueuedTroops = 0;
     ['soldier', 'medic', 'juggernaut'].forEach(k => {
-      if (window.vehicleManager) {
+      if (window.vehicleManager && window.vehicleManager.totalTroops) {
         totalTroops += window.vehicleManager.totalTroops[k] || 0;
       } else {
         totalTroops += this.counts[k];
@@ -366,7 +366,7 @@ class NPCManager {
 
     ['soldier', 'medic', 'juggernaut'].forEach(typeKey => {
       const typeObj = NPC_TYPES[typeKey.toUpperCase()];
-      const count = window.vehicleManager ? (window.vehicleManager.totalTroops[typeKey] || 0) : this.counts[typeKey];
+      const count = (window.vehicleManager && window.vehicleManager.totalTroops) ? (window.vehicleManager.totalTroops[typeKey] || 0) : this.counts[typeKey];
 
       // Calculate available by subtracting deployed (docked or active in transit)
       let available = count;
@@ -431,7 +431,7 @@ class NPCManager {
     let totalTroops = 0;
     let totalQueuedTroops = 0;
     ['soldier', 'medic', 'juggernaut'].forEach(k => {
-      if (window.vehicleManager) {
+      if (window.vehicleManager && window.vehicleManager.totalTroops) {
         totalTroops += window.vehicleManager.totalTroops[k] || 0;
       } else {
         totalTroops += this.counts[k];
@@ -498,7 +498,7 @@ class NPCManager {
             this.npcs.push(newNPC);
             this.counts[task.typeKey]++;
 
-            if (window.vehicleManager) {
+            if (window.vehicleManager && window.vehicleManager.totalTroops) {
               window.vehicleManager.totalTroops[task.typeKey]++;
               window.vehicleManager.updateAvailableTroops();
               if (window.structureManager) {
@@ -533,7 +533,7 @@ class NPCManager {
           this.npcs.splice(i, 1);
           uiNeedsUpdate = true; 
           
-          if (window.vehicleManager) {
+          if (window.vehicleManager && window.vehicleManager.totalTroops) {
             window.vehicleManager.totalTroops[typeKey] = Math.max(0, window.vehicleManager.totalTroops[typeKey] - 1);
             window.vehicleManager.updateAvailableTroops();
             if (window.structureManager) {
