@@ -882,7 +882,8 @@
 
     window.addEventListener('beforeunload', () => {
       if (window.structureManager) {
-        window.structureManager.syncPlayerState();
+        // use .catch to prevent unhandled promise rejections on unload if the network fails
+        window.structureManager.syncPlayerState().catch(e => console.error("beforeunload sync error:", e));
       }
     });
 
