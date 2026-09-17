@@ -422,13 +422,19 @@ class StructureManager {
 
   async syncBuildingState(building) {
     if (window.supabaseClient && building && building.dbId) {
-      await window.supabaseClient
+      const { error } = await window.supabaseClient
         .from('buildings')
         .update({
           training_queue: building.training_queue || [],
           training_started_at: building.training_started_at || null
         })
         .eq('id', building.dbId);
+
+      if (error) {
+        console.warn(`[DEBUG] syncBuildingState: Failed to update queue for building ${building.dbId}. Error:`, error);
+        // We do not have a fallback for this as it only updates queue properties.
+        // If the columns don't exist, we just ignore the error so it doesn't crash the loop.
+      }
     }
   }
 
@@ -444,10 +450,28 @@ class StructureManager {
       }
 
       console.log('[DEBUG] syncPlayerState: syncing state to DB. Data:', updateData);
-      await window.supabaseClient
+      const { error } = await window.supabaseClient
         .from('players')
         .update(updateData)
         .eq('id', window.currentUser.id);
+
+      if (error) {
+        console.warn('[DEBUG] syncPlayerState: Failed to update full state. Error:', error);
+        if (error.code === 'PGRST204' || error.message.includes('Could not find')) {
+          console.log('[DEBUG] syncPlayerState: Attempting fallback update for core resources only...');
+          const fallbackData = {
+            steel: this.resources.steel,
+            oil: this.resources.oil
+          };
+          const { error: fallbackError } = await window.supabaseClient
+            .from('players')
+            .update(fallbackData)
+            .eq('id', window.currentUser.id);
+          if (fallbackError) {
+             console.error('[DEBUG] syncPlayerState: Fallback update also failed. Error:', fallbackError);
+          }
+        }
+      }
 
       // Sync queues for all buildings that can train
       const trainingBuildings = this.buildings.filter(b => b.training_queue && b.training_queue.length > 0);
